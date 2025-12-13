@@ -1,10 +1,11 @@
 import { View, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
 import { useAuth } from "../contexts/authContext";
 import { palette } from "../theme";
+import AppHeader from "../components/AppHeader";
+import MainLayout from "../components/MainLayout";
 import HomeOverview from "../components/home/HomeOverview";
 import BalanceCard from "../components/home/BalanceCard";
 import TopExpensesCard from "../components/home/TopExpensesCard";
-import AddTransactionFab from '../components/transactions/AddTransactionFab';
 
 export default function Home() {
   const { user } = useAuth();
@@ -13,8 +14,11 @@ export default function Home() {
   const emailPrefix = user?.email?.split("@")?.[0] || user?.displayName || "Usuário";
 
   return (
-    <ScrollView style={{ backgroundColor: palette.bg }} contentContainerStyle={{ alignItems: "center", paddingVertical: 12 }}>
-      <View style={{ width: "100%", maxWidth: 980, paddingHorizontal: 12 }}>
+    <MainLayout>
+      <ScrollView style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingBottom: 18 }}>
+        <AppHeader />
+        <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+          <View style={{ width: "100%", maxWidth: 980, paddingHorizontal: 12 }}>
         <HomeOverview
           username={emailPrefix}
           revenue={'R$ 20.358,44'}
@@ -32,9 +36,10 @@ export default function Home() {
             <TopExpensesCard />
           </View>
         </View>
-        <AddTransactionFab style={{ position: 'absolute', right: 22, bottom: 18 }} />
-      </View>
-    </ScrollView>
+          </View>
+        </View>
+      </ScrollView>
+    </MainLayout>
   );
 }
 

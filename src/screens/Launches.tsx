@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import TransactionsList from '../components/transactions/TransactionsList';
 import type { Transaction } from '../state/transactionsState';
 import { useTransactionsState, useTransactionsTotals } from '../state/useTransactions';
-import AddTransactionFab from '../components/transactions/AddTransactionFab';
 import { palette } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
+import AppHeader from '../components/AppHeader';
+import MainLayout from '../components/MainLayout';
 
 export default function Launches() {
   const [items, setItems] = useTransactionsState();
@@ -42,10 +43,13 @@ export default function Launches() {
   
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <ScrollView contentContainerStyle={{ alignItems: 'center', paddingVertical: 12 }}>
-        <View style={{ width: '100%', maxWidth: 980, paddingHorizontal: 12 }}>
-          <Text style={styles.title}>Fluxo de caixa</Text>
+    <MainLayout>
+      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 18 }} keyboardShouldPersistTaps="handled">
+          <AppHeader />
+          <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+            <View style={{ width: '100%', maxWidth: 980, paddingHorizontal: 12 }}>
+              <Text style={styles.title}>Fluxo de caixa</Text>
           {items.length === 0 ? (
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, elevation: 2 }}>
               <Text style={{ fontWeight: '700', marginBottom: 8 }}>Nenhum lançamento encontrado</Text>
@@ -55,17 +59,18 @@ export default function Launches() {
             <TransactionsList items={items} />
           )}
           <View style={{ height: 48 }} />
-        </View>
-      </ScrollView>
+            </View>
+          </View>
+        </ScrollView>
 
-      <View style={styles.summaryBar}>
+        <View style={styles.summaryBar}>
         <View style={styles.summaryItem}><Text style={{ color: palette.blue, fontWeight: '700' }}>{formatCurrencyBRL(totals.income)}</Text><Text style={styles.summaryLabel}>entradas</Text></View>
         <View style={styles.summaryItem}><Text style={{ color: palette.danger, fontWeight: '700' }}>{formatCurrencyBRL(-totals.expenses)}</Text><Text style={styles.summaryLabel}>saídas</Text></View>
         <View style={styles.summaryItem}><Text style={{ color: palette.blueDark, fontWeight: '700' }}>{formatCurrencyBRL(totals.balance)}</Text><Text style={styles.summaryLabel}>saldo</Text></View>
       </View>
 
-      <AddTransactionFab />
-    </View>
+      </View>
+    </MainLayout>
   );
 }
 

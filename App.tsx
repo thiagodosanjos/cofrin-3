@@ -2,6 +2,7 @@ import RootNavigation from "./src/navigation";
 import { AuthProvider } from "./src/contexts/authContext";
 import { TransactionsProvider } from './src/state/transactionsContext';
 import { Provider as PaperProvider, DefaultTheme } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useMemo } from 'react';
 import { useFonts, Roboto_400Regular, Roboto_700Bold } from '@expo-google-fonts/roboto';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
@@ -22,6 +23,14 @@ export default function App() {
     () => ({
       ...DefaultTheme,
       roundness: 8,
+      colors: {
+        ...DefaultTheme.colors,
+        primary: '#1565c0',
+        accent: '#03dac4',
+        background: '#f5f7fb',
+        surface: '#ffffff',
+        onSurface: '#111827',
+      },
     }),
     []
   );
@@ -36,13 +45,15 @@ export default function App() {
 
   return (
     <RecoilRootImpl>
-      <PaperProvider theme={paperTheme}>
-        <TransactionsProvider>
-          <AuthProvider>
-            <RootNavigation />
-          </AuthProvider>
-        </TransactionsProvider>
-      </PaperProvider>
+      <SafeAreaProvider>
+        <PaperProvider theme={paperTheme}>
+          <TransactionsProvider>
+            <AuthProvider>
+              <RootNavigation />
+            </AuthProvider>
+          </TransactionsProvider>
+        </PaperProvider>
+      </SafeAreaProvider>
     </RecoilRootImpl>
   );
 }

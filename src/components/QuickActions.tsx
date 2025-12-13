@@ -2,9 +2,9 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Chip, useTheme } from 'react-native-paper';
 
-type Action = { key?: string | number; label: string; onPress: () => void; icon?: string };
+type Action = { key?: string | number; label: string; onPress?: () => void; icon?: string };
 
-export default function QuickActions({ actions = [] }: { actions?: Action[] }) {
+export default function QuickActions({ actions = [], onAction }: { actions?: Action[]; onAction?: (key: string | number) => void }) {
   const theme = useTheme();
 
   return (
@@ -12,7 +12,10 @@ export default function QuickActions({ actions = [] }: { actions?: Action[] }) {
       {actions.map((a, idx) => (
         <Chip
           key={a.key ?? idx}
-          onPress={a.onPress}
+          onPress={() => {
+            if (typeof a.onPress === 'function') return a.onPress();
+            if (onAction) return onAction(a.key ?? idx);
+          }}
           icon={a.icon}
           style={[styles.chip, { backgroundColor: theme.colors.surface }]}
           accessibilityLabel={a.label}

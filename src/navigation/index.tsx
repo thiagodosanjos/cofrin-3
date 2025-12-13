@@ -5,9 +5,7 @@ import Login from "../screens/Login";
 import Register from "../screens/Register";
 import Home from "../screens/Home";
 import Settings from "../screens/Settings";
-import { palette } from "../theme";
 import { useAuth } from "../contexts/authContext";
-import AppHeader from "../components/AppHeader";
 import Launches from "../screens/Launches";
 import Reports from "../screens/Reports";
 
@@ -25,7 +23,7 @@ export default function RootNavigation() {
     <NavigationContainer>
       {user ? (
         // ROTAS DO USUÁRIO LOGADO
-        <Stack.Navigator screenOptions={{ header: (props) => <AppHeader {...props} />, headerStyle: { backgroundColor: palette.blue }, headerTintColor: '#fff', headerTitleStyle: { color: '#fff' }, headerTitleAlign: 'center' }}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Bem-vindo" component={Home} />
           <Stack.Screen name="Lançamentos" component={Launches} />
           <Stack.Screen name="Relatórios" component={Reports} />
