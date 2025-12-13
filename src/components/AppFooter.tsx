@@ -1,5 +1,5 @@
-import { View, StyleSheet, Pressable } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, StyleSheet, Pressable, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Surface, IconButton, useTheme } from 'react-native-paper';
 
 type Props = {
@@ -18,18 +18,23 @@ export default function AppFooter({ onHome, onAdd, onLaunches, onGoals, onReport
   const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <Surface
         style={[
           styles.container,
           {
             backgroundColor: theme.colors.surface,
-            paddingBottom: Math.max(insets.bottom, 8),
-            borderTopColor: '#0f172a',
-            borderTopWidth: StyleSheet.hairlineWidth,
+            paddingBottom: Math.max(insets.bottom, 4),
+            // Sombra para iOS
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 4,
+            // Sombra para Android
+            elevation: Platform.OS === 'android' ? 8 : 0,
           },
         ]}
-        elevation={1}
+        elevation={0}
       >
         <View style={styles.row}>
           <View style={styles.slot}>
@@ -61,7 +66,7 @@ export default function AppFooter({ onHome, onAdd, onLaunches, onGoals, onReport
           </View>
         </View>
       </Surface>
-    </SafeAreaView>
+    </View>
   );
 }
 
