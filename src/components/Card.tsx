@@ -1,12 +1,25 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Card as PaperCard, useTheme } from 'react-native-paper';
-import { spacing } from '../theme';
+import { spacing, borderRadius, shadows } from '../theme';
 
-export default function Card({ children, style, mode = 'elevated' }: any) {
+interface CardProps {
+  children: React.ReactNode;
+  style?: any;
+  mode?: 'elevated' | 'outlined' | 'contained';
+}
+
+export default function Card({ children, style, mode = 'elevated' }: CardProps) {
   const theme = useTheme();
   return (
-    <PaperCard mode={mode} style={[styles.card, { backgroundColor: theme.colors.surface }, style]}>
+    <PaperCard 
+      mode={mode} 
+      style={[
+        styles.card, 
+        { backgroundColor: theme.colors.surface }, 
+        style
+      ]}
+    >
       {children}
     </PaperCard>
   );
@@ -14,11 +27,10 @@ export default function Card({ children, style, mode = 'elevated' }: any) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
-    padding: spacing.md,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    ...shadows.md,
   },
 });

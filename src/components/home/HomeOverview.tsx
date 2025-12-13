@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Pressable, useWindowDimensions, Platform } from 'react-native';
 import { Card, Text, useTheme, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AddTransactionModal from '../../components/transactions/AddTransactionModal';
 import { useTransactionsState } from '../../state/useTransactions';
 import { formatCurrencyBRL } from '../../utils/format';
+import { palette, spacing, borderRadius } from '../../theme';
 
 interface Props {
   username?: string;
@@ -171,23 +172,24 @@ export default function HomeOverview({
 
 const styles = StyleSheet.create({
   card: {
-    padding: 20,
-    borderRadius: 16,
-    marginHorizontal: 16,
-    marginTop: 8,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
   },
   greeting: {
     fontWeight: '600',
-    marginBottom: 20,
+    marginBottom: spacing.lg,
+    color: palette.text,
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
-    gap: 24,
-    marginBottom: 24,
+    gap: spacing.xl,
+    marginBottom: spacing.xl,
   },
   actionsRowSmall: {
-    gap: 16,
+    gap: spacing.md,
   },
   actionButton: {
     alignItems: 'center',
@@ -195,25 +197,32 @@ const styles = StyleSheet.create({
   actionIcon: {
     width: 52,
     height: 52,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.15)',
+      },
+      default: {
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+    }),
   },
   actionLabel: {
-    marginTop: 8,
-    color: '#64748b',
+    marginTop: spacing.sm,
+    color: palette.textSecondary,
     fontWeight: '600',
     fontSize: 11,
     letterSpacing: 0.5,
   },
   sectionTitle: {
-    color: '#94a3b8',
-    marginBottom: 12,
+    color: palette.textMuted,
+    marginBottom: spacing.sm,
     fontWeight: '500',
   },
   statsRow: {
@@ -227,8 +236,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   statLabel: {
-    color: '#64748b',
-    marginBottom: 4,
+    color: palette.textSecondary,
+    marginBottom: spacing.xs,
   },
   statValue: {
     fontWeight: '700',

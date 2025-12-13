@@ -1,6 +1,7 @@
-import { View, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Surface, IconButton, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Props = {
   onHome: () => void;
@@ -25,16 +26,9 @@ export default function AppFooter({ onHome, onAdd, onLaunches, onGoals, onReport
           {
             backgroundColor: theme.colors.surface,
             paddingBottom: Math.max(insets.bottom, 4),
-            // Sombra para iOS
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.08,
-            shadowRadius: 4,
-            // Sombra para Android
-            elevation: Platform.OS === 'android' ? 8 : 0,
           },
         ]}
-        elevation={0}
+        elevation={4}
       >
         <View style={styles.row}>
           <View style={styles.slot}>
@@ -53,7 +47,7 @@ export default function AppFooter({ onHome, onAdd, onLaunches, onGoals, onReport
               style={[styles.plusButton, { backgroundColor: theme.colors.primary }]}
               hitSlop={12}
             >
-              <IconButton icon="plus" iconColor="#fff" size={28} />
+              <MaterialCommunityIcons name="plus" size={28} color="#fff" />
             </Pressable>
           </View>
 
@@ -100,7 +94,7 @@ const styles = StyleSheet.create({
   plusButton: {
     width: 52,
     height: 52,
-    borderRadius: 30,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
