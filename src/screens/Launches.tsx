@@ -655,7 +655,7 @@ export default function Launches() {
         title={alertState.title}
         message={alertState.message}
         buttons={alertState.buttons}
-        onDismiss={hideAlert}
+        onClose={hideAlert}
       />
     </MainLayout>
   );

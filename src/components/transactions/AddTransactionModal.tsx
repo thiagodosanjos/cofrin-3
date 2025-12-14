@@ -1277,7 +1277,7 @@ export default function AddTransactionModal({
         title={alertState.title}
         message={alertState.message}
         buttons={alertState.buttons}
-        onDismiss={hideAlert}
+        onClose={hideAlert}
       />
     </>
   );

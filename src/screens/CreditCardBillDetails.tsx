@@ -414,7 +414,7 @@ export default function CreditCardBillDetails() {
         title={alertState.title}
         message={alertState.message}
         buttons={alertState.buttons}
-        onDismiss={hideAlert}
+        onClose={hideAlert}
       />
     </MainLayout>
   );
