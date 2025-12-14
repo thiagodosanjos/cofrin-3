@@ -134,7 +134,9 @@ export default function Home() {
         <View style={{ height: 12 }} />
         <View style={{ flexDirection: isNarrow ? 'column' : 'row' }}>
           <View style={{ flex: 1 }}>
-            <TopExpensesCard />
+            <TopExpensesCard 
+              onDetailsPress={() => navigation.navigate('Relatórios')}
+            />
           </View>
           {!isNarrow && <View style={{ flex: 1 }} />}
         </View>
