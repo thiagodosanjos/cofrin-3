@@ -6,6 +6,7 @@ import { useAppTheme } from '../../contexts/themeContext';
 import { spacing, borderRadius, getShadow } from '../../theme';
 
 interface Account { 
+  id?: string;
   name: string; 
   type: string; 
   balance: number;

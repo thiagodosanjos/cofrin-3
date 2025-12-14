@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert, RefreshControl, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import TransactionsList, { TransactionListItem } from '../components/transactions/TransactionsList';
 import AddTransactionModal, { EditableTransaction } from '../components/transactions/AddTransactionModal';
 import { useTransactions } from '../hooks/useFirebaseTransactions';
@@ -12,6 +13,12 @@ import MainLayout from '../components/MainLayout';
 import { spacing, borderRadius, getShadow } from '../theme';
 import type { Transaction, TransactionStatus } from '../types/firebase';
 
+// Tipos dos parâmetros de navegação
+interface RouteParams {
+  accountId?: string;
+  accountName?: string;
+}
+
 // Nomes dos meses em português
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -21,6 +28,20 @@ const MONTHS = [
 export default function Launches() {
   const { colors } = useAppTheme();
   const { refreshKey, triggerRefresh } = useTransactionRefresh();
+  const route = useRoute();
+  const navigation = useNavigation();
+  
+  // Parâmetros de navegação (filtro por conta)
+  const params = (route.params as RouteParams) || {};
+  const [filterAccountId, setFilterAccountId] = useState<string | undefined>(params.accountId);
+  const [filterAccountName, setFilterAccountName] = useState<string | undefined>(params.accountName);
+  
+  // Atualizar filtro quando parâmetros mudarem
+  useEffect(() => {
+    const newParams = (route.params as RouteParams) || {};
+    setFilterAccountId(newParams.accountId);
+    setFilterAccountName(newParams.accountName);
+  }, [route.params]);
   
   // Estado do mês/ano selecionado
   const today = new Date();
@@ -39,7 +60,11 @@ export default function Launches() {
   const [statusTransactionId, setStatusTransactionId] = useState<string | null>(null);
   const [statusTransactionTitle, setStatusTransactionTitle] = useState<string>('');
 
-  // Hook do Firebase com mês/ano selecionado
+  // Hook do Firebase - com filtro de conta se presente, senão por mês/ano
+  const transactionsOptions = filterAccountId 
+    ? { accountId: filterAccountId }
+    : { month: selectedMonth, year: selectedYear };
+    
   const { 
     transactions, 
     totalIncome, 
@@ -52,10 +77,15 @@ export default function Launches() {
     deleteTransaction,
     deleteTransactionSeries,
     updateTransaction 
-  } = useTransactions({ 
-    month: selectedMonth, 
-    year: selectedYear 
-  });
+  } = useTransactions(transactionsOptions);
+  
+  // Limpar filtro de conta
+  const clearAccountFilter = () => {
+    setFilterAccountId(undefined);
+    setFilterAccountName(undefined);
+    // Limpar parâmetros da navegação
+    navigation.setParams({ accountId: undefined, accountName: undefined } as any);
+  };
 
   // Refresh when refreshKey changes (triggered after saving a new transaction)
   useEffect(() => {
@@ -260,7 +290,25 @@ export default function Launches() {
           <AppHeader />
           <View style={styles.content}>
             <View style={styles.maxWidth}>
-              {/* Seletor de Mês/Ano */}
+              {/* Chip de filtro por conta */}
+              {filterAccountName && (
+                <View style={[styles.filterChip, { backgroundColor: colors.primaryBg }]}>
+                  <MaterialCommunityIcons name="filter-variant" size={16} color={colors.primary} />
+                  <Text style={[styles.filterChipText, { color: colors.primary }]}>
+                    {filterAccountName}
+                  </Text>
+                  <Pressable
+                    onPress={clearAccountFilter}
+                    hitSlop={8}
+                    style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <MaterialCommunityIcons name="close-circle" size={18} color={colors.primary} />
+                  </Pressable>
+                </View>
+              )}
+
+              {/* Seletor de Mês/Ano - oculto quando filtro por conta está ativo */}
+              {!filterAccountId && (
               <View style={[styles.monthSelector, { backgroundColor: colors.card }, getShadow(colors)]}>
                 <Pressable 
                   onPress={goToPreviousMonth}
@@ -293,9 +341,10 @@ export default function Launches() {
                   <MaterialCommunityIcons name="chevron-right" size={28} color={colors.primary} />
                 </Pressable>
               </View>
+              )}
 
               {/* Botão Hoje (se não estiver no mês atual) */}
-              {!isCurrentMonth && (
+              {!filterAccountId && !isCurrentMonth && (
                 <Pressable 
                   onPress={goToToday}
                   style={({ pressed }) => [
@@ -704,6 +753,20 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   statusModalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  filterChipText: {
     fontSize: 14,
     fontWeight: '600',
   },

@@ -1,4 +1,5 @@
 import { View, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../contexts/authContext";
 import { useAppTheme } from "../contexts/themeContext";
 import { useTransactions } from "../hooks/useFirebaseTransactions";
@@ -18,6 +19,7 @@ export default function Home() {
   const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
   const { refreshKey, triggerRefresh } = useTransactionRefresh();
+  const navigation = useNavigation<any>();
   const isNarrow = width < 700;
   const emailPrefix = user?.email?.split("@")?.[0] || user?.displayName || "Usuário";
 
@@ -47,6 +49,7 @@ export default function Home() {
       .reduce((sum, acc) => sum + acc.balance, 0);
     
     const formatted = accounts.map(acc => ({
+      id: acc.id,
       name: acc.name,
       type: ACCOUNT_TYPE_LABELS[acc.type] || acc.type,
       balance: acc.balance,
@@ -54,6 +57,16 @@ export default function Home() {
 
     return { totalAccountsBalance: total, formattedAccounts: formatted };
   }, [accounts]);
+
+  // Navegar para lançamentos com filtro de conta
+  const handleAccountPress = (account: { id?: string; name: string }) => {
+    if (account.id) {
+      navigation.navigate('Lançamentos', { 
+        accountId: account.id, 
+        accountName: account.name 
+      });
+    }
+  };
 
   // Refresh quando refreshKey mudar
   useEffect(() => {
@@ -86,7 +99,11 @@ export default function Home() {
         <View style={{ height: 12 }} />
         <View style={{ flexDirection: isNarrow ? 'column' : 'row' }}>
           <View style={{ flex: 1 }}>
-            <BalanceCard balance={totalAccountsBalance} accounts={formattedAccounts} />
+            <BalanceCard 
+              balance={totalAccountsBalance} 
+              accounts={formattedAccounts} 
+              onAccountPress={handleAccountPress}
+            />
           </View>
           <View style={{ width: isNarrow ? '100%' : 12, height: isNarrow ? 12 : 'auto' }} />
           <View style={{ flex: 1 }}>
