@@ -184,16 +184,16 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   const expenseTransactions = transactions.filter(t => t.type === 'expense');
   const transferTransactions = transactions.filter(t => t.type === 'transfer');
 
-  // Calcular totais do mês atual
+  // Calcular totais do mês atual (apenas concluídos para o saldo real)
   const totalIncome = incomeTransactions
-    .filter(t => t.status !== 'cancelled')
+    .filter(t => t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalExpense = expenseTransactions
-    .filter(t => t.status !== 'cancelled')
+    .filter(t => t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Saldo do mês (sem considerar histórico)
+  // Saldo do mês (sem considerar histórico) - apenas lançamentos concluídos
   const monthBalance = totalIncome - totalExpense;
   
   // Saldo total (com histórico acumulado dos meses anteriores)

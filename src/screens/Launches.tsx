@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, RefreshControl, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import TransactionsList, { TransactionListItem } from '../components/transactions/TransactionsList';
 import AddTransactionModal, { EditableTransaction } from '../components/transactions/AddTransactionModal';
@@ -10,7 +10,7 @@ import { formatCurrencyBRL } from '../utils/format';
 import AppHeader from '../components/AppHeader';
 import MainLayout from '../components/MainLayout';
 import { spacing, borderRadius, getShadow } from '../theme';
-import type { Transaction } from '../types/firebase';
+import type { Transaction, TransactionStatus } from '../types/firebase';
 
 // Nomes dos meses em português
 const MONTHS = [
@@ -30,6 +30,14 @@ export default function Launches() {
   // Estado para modal de edição
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<EditableTransaction | null>(null);
+  
+  // Estado para painel de previsão expandido
+  const [forecastExpanded, setForecastExpanded] = useState(false);
+  
+  // Estado para mini modal de status
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [statusTransactionId, setStatusTransactionId] = useState<string | null>(null);
+  const [statusTransactionTitle, setStatusTransactionTitle] = useState<string>('');
 
   // Hook do Firebase com mês/ano selecionado
   const { 
@@ -42,7 +50,8 @@ export default function Launches() {
     loading, 
     refresh,
     deleteTransaction,
-    deleteTransactionSeries 
+    deleteTransactionSeries,
+    updateTransaction 
   } = useTransactions({ 
     month: selectedMonth, 
     year: selectedYear 
@@ -66,6 +75,7 @@ export default function Launches() {
       type: t.type === 'transfer' ? 'transfer' : (t.type === 'expense' ? 'paid' : 'received'),
       category: t.categoryName,
       categoryIcon: t.categoryIcon,
+      status: t.status,
     }));
   }, [transactions]) as Array<{
     id: string;
@@ -76,7 +86,41 @@ export default function Launches() {
     type: 'paid' | 'received' | 'transfer';
     category?: string;
     categoryIcon?: string;
+    status?: 'pending' | 'completed' | 'cancelled';
   }>;
+
+  // Calcular totais separados por status (para previsão)
+  const forecast = useMemo(() => {
+    let completedIncome = 0;
+    let completedExpense = 0;
+    let pendingIncome = 0;
+    let pendingExpense = 0;
+
+    transactions.forEach((t: Transaction) => {
+      if (t.status === 'cancelled') return;
+      
+      if (t.status === 'completed') {
+        if (t.type === 'income') completedIncome += t.amount;
+        else if (t.type === 'expense') completedExpense += t.amount;
+      } else {
+        // pending
+        if (t.type === 'income') pendingIncome += t.amount;
+        else if (t.type === 'expense') pendingExpense += t.amount;
+      }
+    });
+
+    const realizedBalance = carryOverBalance + completedIncome - completedExpense;
+    const forecastBalance = realizedBalance + pendingIncome - pendingExpense;
+
+    return {
+      completedIncome,
+      completedExpense,
+      pendingIncome,
+      pendingExpense,
+      realizedBalance,
+      forecastBalance,
+    };
+  }, [transactions, carryOverBalance]);
 
   // Navegação entre meses
   const goToPreviousMonth = () => {
@@ -128,6 +172,29 @@ export default function Launches() {
 
     setEditingTransaction(editData);
     setEditModalVisible(true);
+  };
+
+  // Handler para abrir modal de status
+  const handleStatusPress = (item: TransactionListItem) => {
+    setStatusTransactionId(item.id);
+    setStatusTransactionTitle(item.title);
+    setStatusModalVisible(true);
+  };
+
+  // Handler para atualizar status da transação
+  const handleUpdateStatus = async (newStatus: TransactionStatus) => {
+    if (!statusTransactionId) return;
+    
+    const result = await updateTransaction(statusTransactionId, { status: newStatus });
+    if (result) {
+      triggerRefresh();
+    } else {
+      Alert.alert('Erro', 'Não foi possível atualizar o status');
+    }
+    
+    setStatusModalVisible(false);
+    setStatusTransactionId(null);
+    setStatusTransactionTitle('');
   };
 
   // Handler para deletar transação (chamado pelo modal)
@@ -275,6 +342,7 @@ export default function Launches() {
                   <TransactionsList 
                     items={listItems} 
                     onEditItem={handleEditTransaction}
+                    onStatusPress={handleStatusPress}
                   />
                 </View>
               )}
@@ -283,37 +351,149 @@ export default function Launches() {
         </ScrollView>
 
         {/* Summary Bar - Fixo acima do footer */}
-        <View style={[styles.summaryBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-          {/* Saldo anterior (se existir) */}
-          {carryOverBalance !== 0 && (
-            <>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryValue, { color: carryOverBalance >= 0 ? colors.textSecondary : expenseColor, fontSize: 13 }]}>
-                  {formatCurrencyBRL(carryOverBalance)}
-                </Text>
-                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>anterior</Text>
+        <View style={[styles.summaryContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+          {/* Painel expandido de previsão */}
+          {forecastExpanded && (
+            <View style={[styles.forecastPanel, { borderBottomColor: colors.border }]}>
+              <View style={styles.forecastRow}>
+                <View style={styles.forecastColumn}>
+                  <Text style={[styles.forecastLabel, { color: colors.textMuted }]}>Recebido</Text>
+                  <Text style={[styles.forecastValue, { color: incomeColor }]}>
+                    {formatCurrencyBRL(forecast.completedIncome)}
+                  </Text>
+                </View>
+                <View style={styles.forecastColumn}>
+                  <Text style={[styles.forecastLabel, { color: colors.textMuted }]}>A receber</Text>
+                  <Text style={[styles.forecastValue, { color: colors.textSecondary }]}>
+                    {formatCurrencyBRL(forecast.pendingIncome)}
+                  </Text>
+                </View>
               </View>
-              <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
-            </>
+              <View style={styles.forecastRow}>
+                <View style={styles.forecastColumn}>
+                  <Text style={[styles.forecastLabel, { color: colors.textMuted }]}>Pago</Text>
+                  <Text style={[styles.forecastValue, { color: expenseColor }]}>
+                    {formatCurrencyBRL(forecast.completedExpense)}
+                  </Text>
+                </View>
+                <View style={styles.forecastColumn}>
+                  <Text style={[styles.forecastLabel, { color: colors.textMuted }]}>A pagar</Text>
+                  <Text style={[styles.forecastValue, { color: colors.textSecondary }]}>
+                    {formatCurrencyBRL(forecast.pendingExpense)}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.forecastDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.forecastRow}>
+                <View style={styles.forecastColumn}>
+                  <Text style={[styles.forecastLabel, { color: colors.textMuted }]}>Saldo realizado</Text>
+                  <Text style={[styles.forecastValue, { color: forecast.realizedBalance >= 0 ? balanceColor : expenseColor }]}>
+                    {formatCurrencyBRL(forecast.realizedBalance)}
+                  </Text>
+                </View>
+                <View style={styles.forecastColumn}>
+                  <Text style={[styles.forecastLabel, { color: colors.textMuted }]}>Previsão final</Text>
+                  <Text style={[styles.forecastValue, { color: forecast.forecastBalance >= 0 ? balanceColor : expenseColor, fontWeight: '700' }]}>
+                    {formatCurrencyBRL(forecast.forecastBalance)}
+                  </Text>
+                </View>
+              </View>
+            </View>
           )}
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: incomeColor }]}>{formatCurrencyBRL(totalIncome)}</Text>
-            <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>entradas</Text>
-          </View>
-          <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: expenseColor }]}>{formatCurrencyBRL(totalExpense)}</Text>
-            <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>saídas</Text>
-          </View>
-          <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: balance >= 0 ? balanceColor : expenseColor }]}>
-              {formatCurrencyBRL(balance)}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>saldo</Text>
+          
+          {/* Botão de expandir/recolher */}
+          <Pressable
+            onPress={() => setForecastExpanded(!forecastExpanded)}
+            style={({ pressed }) => [styles.expandButton, pressed && { opacity: 0.7 }]}
+          >
+            <MaterialCommunityIcons 
+              name={forecastExpanded ? 'chevron-down' : 'chevron-up'} 
+              size={20} 
+              color={colors.primary} 
+            />
+          </Pressable>
+
+          {/* Resumo compacto */}
+          <View style={styles.summaryBar}>
+            {/* Saldo anterior (se existir) */}
+            {carryOverBalance !== 0 && (
+              <>
+                <View style={styles.summaryItem}>
+                  <Text style={[styles.summaryValue, { color: carryOverBalance >= 0 ? colors.textSecondary : expenseColor, fontSize: 13 }]}>
+                    {formatCurrencyBRL(carryOverBalance)}
+                  </Text>
+                  <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>anterior</Text>
+                </View>
+                <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+              </>
+            )}
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: incomeColor }]}>{formatCurrencyBRL(totalIncome)}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>entradas</Text>
+            </View>
+            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: expenseColor }]}>{formatCurrencyBRL(totalExpense)}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>saídas</Text>
+            </View>
+            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: balance >= 0 ? balanceColor : expenseColor }]}>
+                {formatCurrencyBRL(balance)}
+              </Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>saldo</Text>
+            </View>
           </View>
         </View>
       </View>
+
+      {/* Mini Modal de Status */}
+      <Modal
+        visible={statusModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setStatusModalVisible(false)}
+      >
+        <Pressable 
+          style={styles.statusModalOverlay} 
+          onPress={() => setStatusModalVisible(false)}
+        >
+          <View style={[styles.statusModalContent, { backgroundColor: colors.card }, getShadow(colors)]}>
+            <Text style={[styles.statusModalTitle, { color: colors.text }]}>
+              Lançamento concluído?
+            </Text>
+            <Text style={[styles.statusModalSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
+              {statusTransactionTitle}
+            </Text>
+            
+            <View style={styles.statusModalButtons}>
+              <Pressable
+                onPress={() => handleUpdateStatus('pending')}
+                style={({ pressed }) => [
+                  styles.statusModalButton,
+                  { backgroundColor: colors.grayLight },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <MaterialCommunityIcons name="circle-outline" size={20} color={colors.textMuted} />
+                <Text style={[styles.statusModalButtonText, { color: colors.text }]}>Pendente</Text>
+              </Pressable>
+              
+              <Pressable
+                onPress={() => handleUpdateStatus('completed')}
+                style={({ pressed }) => [
+                  styles.statusModalButton,
+                  { backgroundColor: '#10b98120' },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
+                <Text style={[styles.statusModalButtonText, { color: '#10b981' }]}>Concluído</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* Modal de edição */}
       <AddTransactionModal
@@ -434,8 +614,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  summaryBar: {
+  summaryContainer: {
     borderTopWidth: 1,
+  },
+  expandButton: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  forecastPanel: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  forecastRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.sm,
+  },
+  forecastColumn: {
+    flex: 1,
+  },
+  forecastLabel: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  forecastValue: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  forecastDivider: {
+    height: 1,
+    marginVertical: spacing.sm,
+  },
+  summaryBar: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
@@ -456,5 +666,45 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 11,
     marginTop: 2,
+  },
+  statusModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusModalContent: {
+    width: '80%',
+    maxWidth: 320,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+  },
+  statusModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  statusModalSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  statusModalButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  statusModalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  statusModalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

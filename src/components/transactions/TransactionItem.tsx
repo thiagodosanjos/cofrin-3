@@ -13,8 +13,10 @@ interface Props {
   type?: 'received' | 'paid' | 'transfer';
   category?: string;
   categoryIcon?: string;
+  status?: 'pending' | 'completed' | 'cancelled';
   onPress?: () => void;
   onEdit?: () => void;
+  onStatusPress?: () => void;
 }
 
 function TransactionItemComponent({ 
@@ -25,8 +27,10 @@ function TransactionItemComponent({
   type, 
   category,
   categoryIcon,
+  status = 'completed',
   onPress,
   onEdit,
+  onStatusPress,
 }: Props) {
   const { colors } = useAppTheme();
   
@@ -46,6 +50,10 @@ function TransactionItemComponent({
 
   // Subtítulo: categoria + conta
   const subtitle = [category, account].filter(Boolean).join(' • ');
+  
+  // Cor e ícone do status
+  const statusColor = status === 'completed' ? '#10b981' : colors.textMuted;
+  const statusIcon = status === 'completed' ? 'check-circle' : 'circle-outline';
 
   return (
     <Pressable
@@ -55,6 +63,18 @@ function TransactionItemComponent({
         { backgroundColor: pressed ? colors.grayLight : colors.card, borderBottomColor: colors.border }
       ]}
     >
+      {/* Ícone de status (concluído/pendente) */}
+      <Pressable
+        onPress={onStatusPress}
+        hitSlop={8}
+        style={({ pressed }) => [
+          styles.statusButton,
+          { opacity: pressed ? 0.6 : 1 }
+        ]}
+      >
+        <MaterialCommunityIcons name={statusIcon} size={20} color={statusColor} />
+      </Pressable>
+
       <View style={[styles.avatar, { backgroundColor: color + '15' }]}>
         {categoryIcon ? (
           <MaterialCommunityIcons name={categoryIcon as any} size={20} color={color} />
@@ -64,11 +84,11 @@ function TransactionItemComponent({
       </View>
       
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{title}</Text>
+        <Text style={[styles.title, { color: status === 'pending' ? colors.textMuted : colors.text }]} numberOfLines={1}>{title}</Text>
         {subtitle && <Text style={[styles.account, { color: colors.textMuted }]}>{subtitle}</Text>}
       </View>
       
-      <Text style={[styles.amount, { color }]}>{formatCurrencyBRL(amount)}</Text>
+      <Text style={[styles.amount, { color: status === 'pending' ? colors.textMuted : color }]}>{formatCurrencyBRL(amount)}</Text>
       
       {onEdit && (
         <Pressable
@@ -97,6 +117,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderRadius: borderRadius.sm,
     marginBottom: 2,
+  },
+  statusButton: {
+    marginRight: spacing.xs,
+    padding: 2,
   },
   avatar: { 
     width: 40, 

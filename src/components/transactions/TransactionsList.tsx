@@ -12,14 +12,16 @@ export interface TransactionListItem {
   type: 'paid' | 'received' | 'transfer';
   category?: string;
   categoryIcon?: string;
+  status?: 'pending' | 'completed' | 'cancelled';
 }
 
 interface Props { 
   items: TransactionListItem[];
   onEditItem?: (item: TransactionListItem) => void;
+  onStatusPress?: (item: TransactionListItem) => void;
 }
 
-export default function TransactionsList({ items = [], onEditItem }: Props) {
+export default function TransactionsList({ items = [], onEditItem, onStatusPress }: Props) {
   const { colors } = useAppTheme();
   
   // group by date (simple grouping: same date string -> header)
@@ -46,7 +48,9 @@ export default function TransactionsList({ items = [], onEditItem }: Props) {
               type={tx.type}
               category={tx.category}
               categoryIcon={tx.categoryIcon}
+              status={tx.status}
               onEdit={() => onEditItem?.(tx)}
+              onStatusPress={() => onStatusPress?.(tx)}
             />
           ))}
         </View>

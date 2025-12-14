@@ -347,6 +347,13 @@ export default function AddTransactionModal({
 
       // Build base transaction data without undefined fields
       const buildTransactionData = (transactionDate: Date): CreateTransactionInput => {
+        // Status baseado na data: futuro = pendente, passado/hoje = concluído
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const txDate = new Date(transactionDate);
+        txDate.setHours(0, 0, 0, 0);
+        const transactionStatus = txDate > today ? 'pending' : 'completed';
+
         const data: CreateTransactionInput = {
           type: firebaseType,
           amount: parsed,
@@ -354,7 +361,7 @@ export default function AddTransactionModal({
           date: Timestamp.fromDate(transactionDate),
           accountId: useCreditCard && type === 'despesa' ? '' : accountId,
           recurrence,
-          status: 'completed',
+          status: transactionStatus,
         };
 
         // Add optional fields only if they have values

@@ -528,7 +528,8 @@ export async function getCarryOverBalance(
   let carryOver = 0;
 
   for (const t of transactions) {
-    if (t.status === 'cancelled') continue;
+    // Apenas lançamentos concluídos entram no saldo histórico
+    if (t.status !== 'completed') continue;
     
     // Verificar se a transação é de um mês ANTERIOR ao mês especificado
     const isBeforeMonth = 
