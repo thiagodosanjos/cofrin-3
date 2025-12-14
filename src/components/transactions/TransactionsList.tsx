@@ -1,25 +1,25 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import TransactionItem from './TransactionItem';
 import { useAppTheme } from '../../contexts/themeContext';
 import { spacing } from '../../theme';
 
-interface TransactionListItem {
+export interface TransactionListItem {
   id: string;
   date: string;
   title: string;
   account: string;
   amount: number;
-  type: string;
+  type: 'paid' | 'received' | 'transfer';
   category?: string;
   categoryIcon?: string;
 }
 
 interface Props { 
   items: TransactionListItem[];
-  onDeleteItem?: (id: string) => void;
+  onEditItem?: (item: TransactionListItem) => void;
 }
 
-export default function TransactionsList({ items = [], onDeleteItem }: Props) {
+export default function TransactionsList({ items = [], onEditItem }: Props) {
   const { colors } = useAppTheme();
   
   // group by date (simple grouping: same date string -> header)
@@ -38,20 +38,16 @@ export default function TransactionsList({ items = [], onDeleteItem }: Props) {
         <View key={d} style={styles.group}>
           <Text style={[styles.dateHeader, { color: colors.textMuted }]}>{d}</Text>
           {groups[d].map((tx) => (
-            <Pressable
+            <TransactionItem 
               key={tx.id}
-              onLongPress={() => onDeleteItem?.(tx.id)}
-              delayLongPress={500}
-            >
-              <TransactionItem 
-                title={tx.title} 
-                account={tx.account} 
-                amount={tx.amount} 
-                type={tx.type as 'paid' | 'received'}
-                category={tx.category}
-                categoryIcon={tx.categoryIcon}
-              />
-            </Pressable>
+              title={tx.title} 
+              account={tx.account} 
+              amount={tx.amount} 
+              type={tx.type}
+              category={tx.category}
+              categoryIcon={tx.categoryIcon}
+              onEdit={() => onEditItem?.(tx)}
+            />
           ))}
         </View>
       ))}

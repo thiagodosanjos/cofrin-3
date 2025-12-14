@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert, RefreshControl } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import TransactionsList from '../components/transactions/TransactionsList';
+import TransactionsList, { TransactionListItem } from '../components/transactions/TransactionsList';
+import AddTransactionModal, { EditableTransaction } from '../components/transactions/AddTransactionModal';
 import { useTransactions } from '../hooks/useFirebaseTransactions';
 import { useAppTheme } from '../contexts/themeContext';
 import { useTransactionRefresh } from '../contexts/transactionRefreshContext';
@@ -19,12 +20,16 @@ const MONTHS = [
 
 export default function Launches() {
   const { colors } = useAppTheme();
-  const { refreshKey } = useTransactionRefresh();
+  const { refreshKey, triggerRefresh } = useTransactionRefresh();
   
   // Estado do mês/ano selecionado
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1); // Firebase usa 1-12
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+  
+  // Estado para modal de edição
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<EditableTransaction | null>(null);
 
   // Hook do Firebase com mês/ano selecionado
   const { 
@@ -55,11 +60,20 @@ export default function Launches() {
       title: t.description,
       account: t.accountName || t.creditCardName || '',
       amount: t.type === 'expense' ? -t.amount : t.amount,
-      type: t.type === 'expense' ? 'paid' : 'received',
+      type: t.type === 'transfer' ? 'transfer' : (t.type === 'expense' ? 'paid' : 'received'),
       category: t.categoryName,
       categoryIcon: t.categoryIcon,
     }));
-  }, [transactions]);
+  }, [transactions]) as Array<{
+    id: string;
+    date: string;
+    title: string;
+    account: string;
+    amount: number;
+    type: 'paid' | 'received' | 'transfer';
+    category?: string;
+    categoryIcon?: string;
+  }>;
 
   // Navegação entre meses
   const goToPreviousMonth = () => {
@@ -85,25 +99,50 @@ export default function Launches() {
     setSelectedYear(today.getFullYear());
   };
 
-  // Handler para deletar transação
+  // Handler para editar transação
+  const handleEditTransaction = (item: TransactionListItem) => {
+    // Encontrar a transação original do Firebase
+    const originalTransaction = transactions.find(t => t.id === item.id);
+    if (!originalTransaction) return;
+
+    const editData: EditableTransaction = {
+      id: originalTransaction.id,
+      type: originalTransaction.type,
+      amount: originalTransaction.amount,
+      description: originalTransaction.description,
+      date: originalTransaction.date.toDate(),
+      categoryId: originalTransaction.categoryId,
+      categoryName: originalTransaction.categoryName,
+      accountId: originalTransaction.accountId,
+      accountName: originalTransaction.accountName,
+      toAccountId: originalTransaction.toAccountId,
+      toAccountName: originalTransaction.toAccountName,
+      creditCardId: originalTransaction.creditCardId,
+      creditCardName: originalTransaction.creditCardName,
+      recurrence: originalTransaction.recurrence,
+    };
+
+    setEditingTransaction(editData);
+    setEditModalVisible(true);
+  };
+
+  // Handler para deletar transação (chamado pelo modal)
   const handleDeleteTransaction = async (transactionId: string) => {
-    Alert.alert(
-      'Excluir lançamento',
-      'Tem certeza que deseja excluir este lançamento?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Excluir', 
-          style: 'destructive',
-          onPress: async () => {
-            const result = await deleteTransaction(transactionId);
-            if (!result) {
-              Alert.alert('Erro', 'Não foi possível excluir o lançamento');
-            }
-          }
-        },
-      ]
-    );
+    const result = await deleteTransaction(transactionId);
+    if (result) {
+      setEditModalVisible(false);
+      setEditingTransaction(null);
+      triggerRefresh();
+    } else {
+      Alert.alert('Erro', 'Não foi possível excluir o lançamento');
+    }
+  };
+
+  // Handler para salvar edição
+  const handleEditSave = () => {
+    setEditModalVisible(false);
+    setEditingTransaction(null);
+    triggerRefresh();
   };
 
   // Verifica se é o mês atual
@@ -218,7 +257,7 @@ export default function Launches() {
                   </View>
                   <TransactionsList 
                     items={listItems} 
-                    onDeleteItem={handleDeleteTransaction}
+                    onEditItem={handleEditTransaction}
                   />
                 </View>
               )}
@@ -246,6 +285,18 @@ export default function Launches() {
           </View>
         </View>
       </View>
+
+      {/* Modal de edição */}
+      <AddTransactionModal
+        visible={editModalVisible}
+        onClose={() => {
+          setEditModalVisible(false);
+          setEditingTransaction(null);
+        }}
+        onSave={handleEditSave}
+        onDelete={handleDeleteTransaction}
+        editTransaction={editingTransaction}
+      />
     </MainLayout>
   );
 }

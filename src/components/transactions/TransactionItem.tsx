@@ -14,6 +14,7 @@ interface Props {
   category?: string;
   categoryIcon?: string;
   onPress?: () => void;
+  onEdit?: () => void;
 }
 
 function TransactionItemComponent({ 
@@ -24,7 +25,8 @@ function TransactionItemComponent({
   type, 
   category,
   categoryIcon,
-  onPress 
+  onPress,
+  onEdit,
 }: Props) {
   const { colors } = useAppTheme();
   
@@ -67,6 +69,19 @@ function TransactionItemComponent({
       </View>
       
       <Text style={[styles.amount, { color }]}>{formatCurrencyBRL(amount)}</Text>
+      
+      {onEdit && (
+        <Pressable
+          onPress={onEdit}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.editButton,
+            { backgroundColor: pressed ? colors.grayLight : 'transparent' }
+          ]}
+        >
+          <MaterialCommunityIcons name="pencil" size={18} color={colors.textMuted} />
+        </Pressable>
+      )}
     </Pressable>
   );
 }
@@ -109,5 +124,10 @@ const styles = StyleSheet.create({
   amount: { 
     fontWeight: '700', 
     fontSize: 15,
+  },
+  editButton: {
+    marginLeft: spacing.sm,
+    padding: spacing.xs,
+    borderRadius: borderRadius.sm,
   },
 });

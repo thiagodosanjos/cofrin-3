@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    View,
-    StyleSheet,
-    ScrollView,
-    Platform,
-    Pressable,
-    Modal,
-    Dimensions,
-    Text,
-    TextInput,
-    Alert,
+  View,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  Pressable,
+  Modal,
+  Dimensions,
+  Text,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -28,11 +28,30 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 type LocalTransactionType = 'despesa' | 'receita' | 'transfer';
 type PickerType = 'none' | 'category' | 'account' | 'toAccount' | 'creditCard' | 'recurrence' | 'date';
 
+export interface EditableTransaction {
+  id: string;
+  type: 'expense' | 'income' | 'transfer';
+  amount: number;
+  description: string;
+  date: Date;
+  categoryId?: string;
+  categoryName?: string;
+  accountId?: string;
+  accountName?: string;
+  toAccountId?: string;
+  toAccountName?: string;
+  creditCardId?: string;
+  creditCardName?: string;
+  recurrence?: RecurrenceType;
+}
+
 interface Props {
   visible: boolean;
   onClose: () => void;
   onSave?: () => void;
+  onDelete?: (id: string) => void;
   initialType?: LocalTransactionType;
+  editTransaction?: EditableTransaction | null;
 }
 
 // Constants
@@ -81,7 +100,9 @@ export default function AddTransactionModal({
   visible,
   onClose,
   onSave,
+  onDelete,
   initialType = 'despesa',
+  editTransaction,
 }: Props) {
   const { colors } = useAppTheme();
 
@@ -89,7 +110,10 @@ export default function AddTransactionModal({
   const { categories } = useCategories();
   const { activeAccounts } = useAccounts();
   const { activeCards } = useCreditCards();
-  const { createTransaction } = useTransactions();
+  const { createTransaction, updateTransaction } = useTransactions();
+
+  // Mode
+  const isEditMode = !!editTransaction;
 
   // State
   const [type, setType] = useState<LocalTransactionType>(initialType);
@@ -142,36 +166,77 @@ export default function AddTransactionModal({
     }
   }, [categories.length]); // Apenas quando o tamanho muda
 
-  // Reset form when modal opens
+  // Reset form when modal opens or populate with edit data
   useEffect(() => {
     if (visible) {
-      setType(initialType);
-      setAmount('R$ 0,00');
-      setDescription('');
-      setDate(new Date());
-      setRecurrence('none');
       setActivePicker('none');
-      setUseCreditCard(false);
-      setCreditCardId('');
-      setCreditCardName('');
       setSaving(false);
       
-      // Reset to defaults
-      if (activeAccounts.length > 0) {
-        setAccountId(activeAccounts[0].id);
-        setAccountName(activeAccounts[0].name);
-        if (activeAccounts.length > 1) {
-          setToAccountId(activeAccounts[1].id);
-          setToAccountName(activeAccounts[1].name);
+      if (editTransaction) {
+        // Populate form with existing transaction data
+        const localType: LocalTransactionType = 
+          editTransaction.type === 'expense' ? 'despesa' : 
+          editTransaction.type === 'income' ? 'receita' : 'transfer';
+        setType(localType);
+        
+        // Format amount for display
+        const cents = Math.round(editTransaction.amount * 100);
+        setAmount(formatCurrency(cents.toString()));
+        
+        setDescription(editTransaction.description || '');
+        setDate(editTransaction.date);
+        setRecurrence(editTransaction.recurrence || 'none');
+        
+        // Category
+        if (editTransaction.categoryId) {
+          setCategoryId(editTransaction.categoryId);
+          setCategoryName(editTransaction.categoryName || '');
+        }
+        
+        // Account
+        if (editTransaction.accountId) {
+          setAccountId(editTransaction.accountId);
+          setAccountName(editTransaction.accountName || '');
+          setUseCreditCard(false);
+        } else if (editTransaction.creditCardId) {
+          setUseCreditCard(true);
+          setCreditCardId(editTransaction.creditCardId);
+          setCreditCardName(editTransaction.creditCardName || '');
+        }
+        
+        // To account (for transfers)
+        if (editTransaction.toAccountId) {
+          setToAccountId(editTransaction.toAccountId);
+          setToAccountName(editTransaction.toAccountName || '');
+        }
+      } else {
+        // Reset to defaults for new transaction
+        setType(initialType);
+        setAmount('R$ 0,00');
+        setDescription('');
+        setDate(new Date());
+        setRecurrence('none');
+        setUseCreditCard(false);
+        setCreditCardId('');
+        setCreditCardName('');
+        
+        // Reset to defaults
+        if (activeAccounts.length > 0) {
+          setAccountId(activeAccounts[0].id);
+          setAccountName(activeAccounts[0].name);
+          if (activeAccounts.length > 1) {
+            setToAccountId(activeAccounts[1].id);
+            setToAccountName(activeAccounts[1].name);
+          }
+        }
+        if (categories.length > 0) {
+          const defaultCat = categories.find(c => c.name === 'Outros') || categories[0];
+          setCategoryId(defaultCat.id);
+          setCategoryName(defaultCat.name);
         }
       }
-      if (categories.length > 0) {
-        const defaultCat = categories.find(c => c.name === 'Outros') || categories[0];
-        setCategoryId(defaultCat.id);
-        setCategoryName(defaultCat.name);
-      }
     }
-  }, [visible, initialType]); // Removido activeAccounts e categories
+  }, [visible, initialType, editTransaction]); // Removido activeAccounts e categories
 
   // Sync tempDate when opening date picker
   useEffect(() => {
@@ -263,14 +328,28 @@ export default function AddTransactionModal({
         transactionData.creditCardId = creditCardId;
       }
 
-      const result = await createTransaction(transactionData);
+      let success = false;
+      
+      if (isEditMode && editTransaction) {
+        // Update existing transaction
+        success = await updateTransaction(editTransaction.id, transactionData);
+        if (success) {
+          Alert.alert('Sucesso', 'Lançamento atualizado!');
+        }
+      } else {
+        // Create new transaction
+        const result = await createTransaction(transactionData);
+        success = !!result;
+        if (success) {
+          Alert.alert('Sucesso', 'Lançamento salvo!');
+        }
+      }
 
-      if (result) {
-        Alert.alert('Sucesso', 'Lançamento salvo!');
+      if (success) {
         onSave?.();
         onClose();
       } else {
-        Alert.alert('Erro', 'Não foi possível salvar o lançamento');
+        Alert.alert('Erro', `Não foi possível ${isEditMode ? 'atualizar' : 'salvar'} o lançamento`);
       }
     } catch (error) {
       console.error('Erro ao salvar:', error);
@@ -281,7 +360,8 @@ export default function AddTransactionModal({
   }, [
     type, amount, description, categoryId, categoryName,
     accountId, toAccountId, creditCardId, useCreditCard,
-    date, recurrence, createTransaction, onSave, onClose
+    date, recurrence, createTransaction, updateTransaction, 
+    isEditMode, editTransaction, onSave, onClose
   ]);
 
   // Componente de campo selecionável
@@ -742,7 +822,10 @@ export default function AddTransactionModal({
 
                 {/* Título */}
                 <Text style={styles.headerTitle}>
-                  {type === 'despesa' ? 'Nova Despesa' : type === 'receita' ? 'Nova Receita' : 'Nova Transferência'}
+                  {isEditMode 
+                    ? (type === 'despesa' ? 'Editar Despesa' : type === 'receita' ? 'Editar Receita' : 'Editar Transferência')
+                    : (type === 'despesa' ? 'Nova Despesa' : type === 'receita' ? 'Nova Receita' : 'Nova Transferência')
+                  }
                 </Text>
 
                 {/* Type selector */}
@@ -868,20 +951,54 @@ export default function AddTransactionModal({
                 </View>
               </ScrollView>
 
-              {/* Botão Salvar - fixo no fundo */}
+              {/* Botões - fixo no fundo */}
               <View style={[styles.buttonContainer, { backgroundColor: colors.bg }]}>
+                {/* Botão Excluir - só aparece em modo edição */}
+                {isEditMode && onDelete && editTransaction && (
+                  <Pressable
+                    onPress={() => {
+                      Alert.alert(
+                        'Excluir lançamento',
+                        'Tem certeza que deseja excluir este lançamento?',
+                        [
+                          { text: 'Cancelar', style: 'cancel' },
+                          { 
+                            text: 'Excluir', 
+                            style: 'destructive',
+                            onPress: () => {
+                              onDelete(editTransaction.id);
+                              onClose();
+                            }
+                          },
+                        ]
+                      );
+                    }}
+                    style={({ pressed }) => [
+                      styles.deleteButton,
+                      { borderColor: '#dc2626' },
+                      pressed && { opacity: 0.8, backgroundColor: '#dc262610' },
+                    ]}
+                  >
+                    <MaterialCommunityIcons name="trash-can-outline" size={20} color="#dc2626" />
+                    <Text style={styles.deleteButtonText}>Excluir</Text>
+                  </Pressable>
+                )}
+                
+                {/* Botão Salvar/Atualizar - sempre verde */}
                 <Pressable
                   onPress={handleSave}
                   disabled={saving}
                   style={({ pressed }) => [
                     styles.saveButton,
-                    { backgroundColor: headerColor },
+                    { backgroundColor: '#10b981' },
                     pressed && { opacity: 0.9 },
                     saving && { opacity: 0.6 },
                   ]}
                 >
                   <MaterialCommunityIcons name={saving ? 'loading' : 'check'} size={20} color="#fff" />
-                  <Text style={styles.saveButtonText}>{saving ? 'Salvando...' : 'Confirmar'}</Text>
+                  <Text style={styles.saveButtonText}>
+                    {saving ? (isEditMode ? 'Atualizando...' : 'Salvando...') : (isEditMode ? 'Atualizar' : 'Confirmar')}
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -1019,10 +1136,14 @@ const styles = StyleSheet.create({
     marginLeft: 68,
   },
   buttonContainer: {
-    padding: spacing.sm,
-    paddingBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
   },
   saveButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1046,6 +1167,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#dc2626',
+    marginLeft: spacing.xs,
   },
   // Picker styles
   pickerOverlay: {
