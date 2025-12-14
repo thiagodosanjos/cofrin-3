@@ -48,8 +48,13 @@ export default function BalanceCard({ balance = 0, accounts = [], onAccountPress
         </View>
         
         <View style={styles.accountInfo}>
-          <Text variant="bodyMedium" style={[styles.accountName, { color: colors.text }]}>{account.name}</Text>
-          <Text variant="bodySmall" style={[styles.accountType, { color: colors.textMuted }]}>{account.type}</Text>
+            <Text variant="bodyMedium" style={[styles.accountName, { color: colors.text }]}>{account.name}</Text>
+            <Text variant="bodySmall" style={[styles.accountType, { color: colors.textMuted }]}>{account.type}</Text>
+            {account.balance < 0 && (
+              <View style={[styles.accountWarningTag, { backgroundColor: colors.danger }]}> 
+                <Text variant="bodySmall" style={[styles.accountWarningText, { color: colors.textInverse }]}>Usando limite da conta</Text>
+              </View>
+            )}
         </View>
         
         <Text variant="titleSmall" style={[styles.accountBalance, { color: colors.text }]}>
@@ -189,6 +194,17 @@ const styles = StyleSheet.create({
   },
   accountType: {
     marginTop: 2,
+  },
+  accountWarningTag: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+  },
+  accountWarningText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   accountBalance: {
     fontWeight: '700',
