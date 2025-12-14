@@ -4,22 +4,38 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppTheme } from "../contexts/themeContext";
 import { useAuth } from "../contexts/authContext";
 import { spacing, borderRadius } from "../theme";
+import { updateUserProfile } from "../services/auth";
+import CustomAlert from "../components/CustomAlert";
+import { useCustomAlert } from "../hooks";
 
 export default function EditProfile({ navigation }: any) {
   const { colors } = useAppTheme();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const { alertState, showAlert, hideAlert } = useCustomAlert();
   
   const currentName = user?.displayName || user?.email?.split('@')[0] || '';
   const [name, setName] = useState(currentName);
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
+    if (!name.trim()) return;
+    
     setLoading(true);
-    // TODO: Implementar atualização do perfil no Firebase
-    setTimeout(() => {
+    try {
+      await updateUserProfile(name.trim());
+      await refreshUser(); // Atualizar o usuário no contexto
+      showAlert('Sucesso', 'Perfil atualizado com sucesso!', [
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack()
+        }
+      ]);
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      showAlert('Erro', 'Não foi possível atualizar o perfil. Tente novamente.');
+    } finally {
       setLoading(false);
-      navigation.goBack();
-    }, 500);
+    }
   }
 
   return (
@@ -74,6 +90,8 @@ export default function EditProfile({ navigation }: any) {
           </Text>
         </Pressable>
       </View>
+
+      <CustomAlert {...alertState} onClose={hideAlert} />
     </View>
   );
 }

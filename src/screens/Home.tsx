@@ -22,7 +22,7 @@ export default function Home() {
   const { refreshKey, triggerRefresh } = useTransactionRefresh();
   const navigation = useNavigation<any>();
   const isNarrow = width < 700;
-  const emailPrefix = user?.email?.split("@")?.[0] || user?.displayName || "Usuário";
+  const userName = user?.displayName || user?.email?.split("@")?.[0] || "Usuário";
 
   // Mês atual para buscar transações
   const today = new Date();
@@ -111,7 +111,7 @@ export default function Home() {
         <View style={{ alignItems: 'center', paddingVertical: 12 }}>
           <View style={{ width: "100%", maxWidth: 980, paddingHorizontal: 12 }}>
         <HomeOverview
-          username={emailPrefix}
+          username={userName}
           revenue={totalIncome}
           expenses={totalExpense}
           onSaveTransaction={triggerRefresh}

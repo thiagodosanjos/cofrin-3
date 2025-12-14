@@ -5,16 +5,26 @@ import { auth } from "../services/firebase";
 type AuthContextProps = {
   user: User | null;
   loading: boolean;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextProps>({
   user: null,
   loading: true,
+  refreshUser: async () => {},
 });
 
 export function AuthProvider({ children }: any) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const refreshUser = async () => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await currentUser.reload();
+      setUser({ ...currentUser });
+    }
+  };
 
   useEffect(() => {
     // Listener de login automático
@@ -27,7 +37,7 @@ export function AuthProvider({ children }: any) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
