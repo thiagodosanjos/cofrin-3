@@ -20,7 +20,7 @@ import { useCategories } from '../../hooks/useCategories';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCreditCards } from '../../hooks/useCreditCards';
 import { useTransactions } from '../../hooks/useFirebaseTransactions';
-import { TransactionType, RecurrenceType } from '../../types/firebase';
+import { TransactionType, RecurrenceType, CreateTransactionInput } from '../../types/firebase';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -131,7 +131,7 @@ export default function AddTransactionModal({
         setToAccountName(activeAccounts[1].name);
       }
     }
-  }, [activeAccounts, accountId]);
+  }, [activeAccounts.length]); // Apenas quando o tamanho muda
 
   // Set default category when categories load
   useEffect(() => {
@@ -140,7 +140,7 @@ export default function AddTransactionModal({
       setCategoryId(defaultCat.id);
       setCategoryName(defaultCat.name);
     }
-  }, [categories, categoryId]);
+  }, [categories.length]); // Apenas quando o tamanho muda
 
   // Reset form when modal opens
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function AddTransactionModal({
         setCategoryName(defaultCat.name);
       }
     }
-  }, [visible, initialType, activeAccounts, categories]);
+  }, [visible, initialType]); // Removido activeAccounts e categories
 
   // Sync tempDate when opening date picker
   useEffect(() => {
@@ -229,18 +229,29 @@ export default function AddTransactionModal({
         type === 'despesa' ? 'expense' : 
         type === 'receita' ? 'income' : 'transfer';
 
-      const result = await createTransaction({
+      // Build transaction data without undefined fields
+      const transactionData: CreateTransactionInput = {
         type: firebaseType,
         amount: parsed,
         description: description.trim() || categoryName,
         date: Timestamp.fromDate(date),
-        categoryId: type !== 'transfer' ? categoryId : undefined,
         accountId: useCreditCard && type === 'despesa' ? '' : accountId,
-        toAccountId: type === 'transfer' ? toAccountId : undefined,
-        creditCardId: useCreditCard && type === 'despesa' ? creditCardId : undefined,
         recurrence,
         status: 'completed',
-      });
+      };
+
+      // Add optional fields only if they have values
+      if (type !== 'transfer' && categoryId) {
+        transactionData.categoryId = categoryId;
+      }
+      if (type === 'transfer' && toAccountId) {
+        transactionData.toAccountId = toAccountId;
+      }
+      if (useCreditCard && type === 'despesa' && creditCardId) {
+        transactionData.creditCardId = creditCardId;
+      }
+
+      const result = await createTransaction(transactionData);
 
       if (result) {
         Alert.alert('Sucesso', 'Lançamento salvo!');

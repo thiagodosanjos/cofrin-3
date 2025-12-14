@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { formatCurrencyBRL } from '../../utils/format';
 import { useAppTheme } from '../../contexts/themeContext';
 import { spacing, borderRadius } from '../../theme';
@@ -10,10 +11,21 @@ interface Props {
   account?: string;
   amount: number; // numeric value; positive = income, negative = expense
   type?: 'received' | 'paid' | 'transfer';
+  category?: string;
+  categoryIcon?: string;
   onPress?: () => void;
 }
 
-function TransactionItemComponent({ icon = '◻', title, account, amount, type, onPress }: Props) {
+function TransactionItemComponent({ 
+  icon = '◻', 
+  title, 
+  account, 
+  amount, 
+  type, 
+  category,
+  categoryIcon,
+  onPress 
+}: Props) {
   const { colors } = useAppTheme();
   
   // Cores específicas para cada tipo de transação
@@ -30,6 +42,9 @@ function TransactionItemComponent({ icon = '◻', title, account, amount, type, 
   const color = getColor();
   const initial = title.charAt(0).toUpperCase();
 
+  // Subtítulo: categoria + conta
+  const subtitle = [category, account].filter(Boolean).join(' • ');
+
   return (
     <Pressable
       onPress={onPress}
@@ -39,12 +54,16 @@ function TransactionItemComponent({ icon = '◻', title, account, amount, type, 
       ]}
     >
       <View style={[styles.avatar, { backgroundColor: color + '15' }]}>
-        <Text style={[styles.avatarLabel, { color }]}>{initial}</Text>
+        {categoryIcon ? (
+          <MaterialCommunityIcons name={categoryIcon as any} size={20} color={color} />
+        ) : (
+          <Text style={[styles.avatarLabel, { color }]}>{initial}</Text>
+        )}
       </View>
       
       <View style={styles.content}>
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{title}</Text>
-        {account && <Text style={[styles.account, { color: colors.textMuted }]}>{account}</Text>}
+        {subtitle && <Text style={[styles.account, { color: colors.textMuted }]}>{subtitle}</Text>}
       </View>
       
       <Text style={[styles.amount, { color }]}>{formatCurrencyBRL(amount)}</Text>

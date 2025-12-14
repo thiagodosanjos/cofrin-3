@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, RefreshControl } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import TransactionsList from '../components/transactions/TransactionsList';
-import type { Transaction } from '../state/transactionsState';
-import { useTransactionsState } from '../state/useTransactions';
+import { useTransactions } from '../hooks/useFirebaseTransactions';
 import { useAppTheme } from '../contexts/themeContext';
 import { formatCurrencyBRL } from '../utils/format';
 import AppHeader from '../components/AppHeader';
 import MainLayout from '../components/MainLayout';
 import { spacing, borderRadius, getShadow } from '../theme';
+import type { Transaction } from '../types/firebase';
 
 // Nomes dos meses em português
 const MONTHS = [
@@ -17,84 +17,45 @@ const MONTHS = [
 ];
 
 export default function Launches() {
-  const [items, setItems] = useTransactionsState();
   const { colors } = useAppTheme();
   
   // Estado do mês/ano selecionado
   const today = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1); // Firebase usa 1-12
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
-  // Bootstrapping dados de demonstração com múltiplos meses
-  useEffect(() => {
-    let mounted = true;
+  // Hook do Firebase com mês/ano selecionado
+  const { 
+    transactions, 
+    totalIncome, 
+    totalExpense, 
+    balance,
+    loading, 
+    refresh,
+    deleteTransaction 
+  } = useTransactions({ 
+    month: selectedMonth, 
+    year: selectedYear 
+  });
 
-    if (items.length === 0) {
-      const mock: Transaction[] = [
-        // Dezembro 2025 (atual)
-        { id: 't1', date: '2025-12-01', title: 'CDI', account: 'Nuconta', amount: 2.3, type: 'received' },
-        { id: 't2', date: '2025-12-01', title: 'AZZA3', account: 'Nuconta', amount: 4.45, type: 'received' },
-        { id: 't3', date: '2025-12-05', title: 'Parcela Celular 4/8', account: 'Nuconta', amount: 100.0, type: 'received' },
-        { id: 't4', date: '2025-12-10', title: 'Água', account: 'Nuconta', amount: -152.6, type: 'paid' },
-        { id: 't5', date: '2025-12-15', title: 'Escola do Guel', account: 'Nuconta', amount: -803.33, type: 'paid' },
-        // Novembro 2025 (passado)
-        { id: 't6', date: '2025-11-05', title: 'Salário', account: 'Nuconta', amount: 5500.0, type: 'received' },
-        { id: 't7', date: '2025-11-10', title: 'Aluguel', account: 'Nuconta', amount: -1200.0, type: 'paid' },
-        { id: 't8', date: '2025-11-15', title: 'Supermercado', account: 'Nuconta', amount: -450.0, type: 'paid' },
-        { id: 't9', date: '2025-11-20', title: 'Freelance', account: 'PicPay', amount: 800.0, type: 'received' },
-        // Outubro 2025
-        { id: 't10', date: '2025-10-05', title: 'Salário', account: 'Nuconta', amount: 5500.0, type: 'received' },
-        { id: 't11', date: '2025-10-10', title: 'Aluguel', account: 'Nuconta', amount: -1200.0, type: 'paid' },
-        { id: 't12', date: '2025-10-12', title: 'Luz', account: 'Nuconta', amount: -180.0, type: 'paid' },
-        // Janeiro 2026 (futuro - parcelas)
-        { id: 't13', date: '2026-01-05', title: 'Parcela Celular 5/8', account: 'Nuconta', amount: -100.0, type: 'paid' },
-        { id: 't14', date: '2026-01-10', title: 'Escola do Guel', account: 'Nuconta', amount: -803.33, type: 'paid' },
-        { id: 't15', date: '2026-01-15', title: 'IPTU 1/10', account: 'Nuconta', amount: -350.0, type: 'paid' },
-        // Fevereiro 2026 (futuro)
-        { id: 't16', date: '2026-02-05', title: 'Parcela Celular 6/8', account: 'Nuconta', amount: -100.0, type: 'paid' },
-        { id: 't17', date: '2026-02-10', title: 'Escola do Guel', account: 'Nuconta', amount: -803.33, type: 'paid' },
-        { id: 't18', date: '2026-02-15', title: 'IPTU 2/10', account: 'Nuconta', amount: -350.0, type: 'paid' },
-      ];
-      if (mounted) setItems(mock);
-    }
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Filtra itens pelo mês/ano selecionado
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      const date = new Date(item.date);
-      return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
-    });
-  }, [items, selectedMonth, selectedYear]);
-
-  // Calcula totais do mês selecionado
-  const monthTotals = useMemo(() => {
-    let income = 0;
-    let expenses = 0;
-    
-    filteredItems.forEach((item) => {
-      if (item.amount > 0) {
-        income += item.amount;
-      } else {
-        expenses += Math.abs(item.amount);
-      }
-    });
-    
-    return {
-      income,
-      expenses,
-      balance: income - expenses,
-    };
-  }, [filteredItems]);
+  // Converte transações do Firebase para o formato do TransactionsList
+  const listItems = useMemo(() => {
+    return transactions.map((t: Transaction) => ({
+      id: t.id,
+      date: t.date.toDate().toISOString().split('T')[0],
+      title: t.description,
+      account: t.accountName || t.creditCardName || '',
+      amount: t.type === 'expense' ? -t.amount : t.amount,
+      type: t.type === 'expense' ? 'paid' : 'received',
+      category: t.categoryName,
+      categoryIcon: t.categoryIcon,
+    }));
+  }, [transactions]);
 
   // Navegação entre meses
   const goToPreviousMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedMonth(11);
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
       setSelectedYear(selectedYear - 1);
     } else {
       setSelectedMonth(selectedMonth - 1);
@@ -102,8 +63,8 @@ export default function Launches() {
   };
 
   const goToNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedMonth(0);
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
       setSelectedYear(selectedYear + 1);
     } else {
       setSelectedMonth(selectedMonth + 1);
@@ -111,16 +72,37 @@ export default function Launches() {
   };
 
   const goToToday = () => {
-    setSelectedMonth(today.getMonth());
+    setSelectedMonth(today.getMonth() + 1);
     setSelectedYear(today.getFullYear());
   };
 
+  // Handler para deletar transação
+  const handleDeleteTransaction = async (transactionId: string) => {
+    Alert.alert(
+      'Excluir lançamento',
+      'Tem certeza que deseja excluir este lançamento?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Excluir', 
+          style: 'destructive',
+          onPress: async () => {
+            const result = await deleteTransaction(transactionId);
+            if (!result) {
+              Alert.alert('Erro', 'Não foi possível excluir o lançamento');
+            }
+          }
+        },
+      ]
+    );
+  };
+
   // Verifica se é o mês atual
-  const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear();
+  const isCurrentMonth = selectedMonth === (today.getMonth() + 1) && selectedYear === today.getFullYear();
   
   // Verifica se é mês futuro
   const isFutureMonth = selectedYear > today.getFullYear() || 
-    (selectedYear === today.getFullYear() && selectedMonth > today.getMonth());
+    (selectedYear === today.getFullYear() && selectedMonth > (today.getMonth() + 1));
 
   // Cores específicas para o resumo
   const incomeColor = '#10b981';
@@ -130,7 +112,19 @@ export default function Launches() {
   return (
     <MainLayout>
       <View style={[styles.root, { backgroundColor: colors.bg }]}>
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent} 
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={refresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
           <AppHeader />
           <View style={styles.content}>
             <View style={styles.maxWidth}>
@@ -148,7 +142,7 @@ export default function Launches() {
                   style={({ pressed }) => [styles.monthDisplay, pressed && { opacity: 0.8 }]}
                 >
                   <Text style={[styles.monthText, { color: colors.text }]}>
-                    {MONTHS[selectedMonth]}
+                    {MONTHS[selectedMonth - 1]}
                   </Text>
                   <Text style={[styles.yearText, { color: colors.textSecondary }]}>
                     {selectedYear}
@@ -184,7 +178,11 @@ export default function Launches() {
               )}
 
               {/* Lista de Transações */}
-              {filteredItems.length === 0 ? (
+              {loading ? (
+                <View style={[styles.emptyCard, { backgroundColor: colors.card }, getShadow(colors)]}>
+                  <Text style={[styles.emptyText, { color: colors.textMuted }]}>Carregando...</Text>
+                </View>
+              ) : listItems.length === 0 ? (
                 <View style={[styles.emptyCard, { backgroundColor: colors.card }, getShadow(colors)]}>
                   <View style={[styles.emptyIcon, { backgroundColor: colors.primaryBg }]}>
                     <MaterialCommunityIcons 
@@ -206,10 +204,13 @@ export default function Launches() {
                 <View style={[styles.listCard, { backgroundColor: colors.card }, getShadow(colors)]}>
                   <View style={styles.listHeader}>
                     <Text style={[styles.listTitle, { color: colors.text }]}>
-                      {filteredItems.length} lançamento{filteredItems.length !== 1 ? 's' : ''}
+                      {listItems.length} lançamento{listItems.length !== 1 ? 's' : ''}
                     </Text>
                   </View>
-                  <TransactionsList items={filteredItems} />
+                  <TransactionsList 
+                    items={listItems} 
+                    onDeleteItem={handleDeleteTransaction}
+                  />
                 </View>
               )}
             </View>
@@ -219,18 +220,18 @@ export default function Launches() {
         {/* Summary Bar - Fixo acima do footer */}
         <View style={[styles.summaryBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: incomeColor }]}>{formatCurrencyBRL(monthTotals.income)}</Text>
+            <Text style={[styles.summaryValue, { color: incomeColor }]}>{formatCurrencyBRL(totalIncome)}</Text>
             <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>entradas</Text>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: expenseColor }]}>{formatCurrencyBRL(monthTotals.expenses)}</Text>
+            <Text style={[styles.summaryValue, { color: expenseColor }]}>{formatCurrencyBRL(totalExpense)}</Text>
             <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>saídas</Text>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: monthTotals.balance >= 0 ? balanceColor : expenseColor }]}>
-              {formatCurrencyBRL(monthTotals.balance)}
+            <Text style={[styles.summaryValue, { color: balance >= 0 ? balanceColor : expenseColor }]}>
+              {formatCurrencyBRL(balance)}
             </Text>
             <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>saldo</Text>
           </View>

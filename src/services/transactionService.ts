@@ -78,40 +78,54 @@ export async function createTransaction(
     }
   }
 
-  // Criar transação
-  const docRef = await addDoc(transactionsRef, {
-    ...data,
+  // Criar transação - construir objeto sem campos undefined
+  const transactionData: Record<string, any> = {
+    type: data.type,
+    amount: data.amount,
+    description: data.description,
+    date: data.date,
+    accountId: data.accountId,
+    recurrence: data.recurrence,
+    status: data.status,
     userId,
     month,
     year,
-    categoryName,
-    categoryIcon,
-    accountName,
-    toAccountName,
-    creditCardName,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+
+  // Adicionar campos opcionais apenas se tiverem valor
+  if (data.categoryId) {
+    transactionData.categoryId = data.categoryId;
+    if (categoryName) transactionData.categoryName = categoryName;
+    if (categoryIcon) transactionData.categoryIcon = categoryIcon;
+  }
+  if (accountName) transactionData.accountName = accountName;
+  if (data.toAccountId) {
+    transactionData.toAccountId = data.toAccountId;
+    if (toAccountName) transactionData.toAccountName = toAccountName;
+  }
+  if (data.creditCardId) {
+    transactionData.creditCardId = data.creditCardId;
+    if (creditCardName) transactionData.creditCardName = creditCardName;
+  }
+  if (data.notes) transactionData.notes = data.notes;
+  if (data.tags && data.tags.length > 0) transactionData.tags = data.tags;
+  if (data.recurrenceEndDate) transactionData.recurrenceEndDate = data.recurrenceEndDate;
+  if (data.parentTransactionId) transactionData.parentTransactionId = data.parentTransactionId;
+
+  const docRef = await addDoc(transactionsRef, transactionData);
 
   // Atualizar saldos das contas (se não for no cartão de crédito)
   if (!data.creditCardId) {
     await updateBalancesForTransaction(data);
   }
 
+  // Retornar transação criada (com os mesmos dados salvos)
   return {
     id: docRef.id,
-    userId,
-    ...data,
-    month,
-    year,
-    categoryName,
-    categoryIcon,
-    accountName,
-    toAccountName,
-    creditCardName,
-    createdAt: now,
-    updatedAt: now,
-  };
+    ...transactionData,
+  } as Transaction;
 }
 
 // Atualizar saldos das contas baseado na transação
