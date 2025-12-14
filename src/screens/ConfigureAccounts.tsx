@@ -9,7 +9,7 @@ import { useCustomAlert } from "../hooks/useCustomAlert";
 import CustomAlert from "../components/CustomAlert";
 import { AccountType, ACCOUNT_TYPE_LABELS, Account } from "../types/firebase";
 import { formatCurrencyBRL } from "../utils/format";
-import { createBalanceAdjustment, deleteTransactionsByAccount, countTransactionsByAccount } from "../services/transactionService";
+import { deleteTransactionsByAccount, countTransactionsByAccount } from "../services/transactionService";
 import { setAccountBalance } from "../services/accountService";
 
 interface AccountTypeOption {
@@ -46,7 +46,6 @@ export default function ConfigureAccounts({ navigation }: any) {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [editName, setEditName] = useState('');
-  const [editBalance, setEditBalance] = useState('');
   const [editType, setEditType] = useState<AccountType>('checking');
   const [editIcon, setEditIcon] = useState('bank');
   const [editIncludeInTotal, setEditIncludeInTotal] = useState(true);
@@ -105,7 +104,6 @@ export default function ConfigureAccounts({ navigation }: any) {
   function openEditModal(account: Account) {
     setEditingAccount(account);
     setEditName(account.name);
-    setEditBalance(account.balance.toString().replace('.', ','));
     setEditType(account.type);
     setEditIcon(account.icon || getAccountIcon(account.type));
     setEditIncludeInTotal(account.includeInTotal);
@@ -114,47 +112,21 @@ export default function ConfigureAccounts({ navigation }: any) {
 
   // Salvar edição
   async function handleSaveEdit() {
-    if (!editingAccount || !editName.trim() || !user?.uid) return;
+    if (!editingAccount || !editName.trim()) return;
 
     setSaving(true);
     try {
-      const newBalance = parseBalance(editBalance);
-      const oldBalance = editingAccount.balance;
-      const balanceChanged = newBalance !== oldBalance;
-      
-      // Se o saldo mudou, criar transação de ajuste
-      if (balanceChanged) {
-        await createBalanceAdjustment(
-          user.uid,
-          editingAccount.id,
-          editName.trim(),
-          oldBalance,
-          newBalance
-        );
-      }
-      
       const result = await updateAccount(editingAccount.id, {
         name: editName.trim(),
         type: editType,
         icon: editIcon,
-        balance: newBalance,
         includeInTotal: editIncludeInTotal,
       });
 
       if (result) {
         setEditModalVisible(false);
         setEditingAccount(null);
-        
-        if (balanceChanged) {
-          const diff = newBalance - oldBalance;
-          showAlert(
-            'Conta atualizada', 
-            `Ajuste de saldo registrado: ${diff >= 0 ? '+' : ''}${formatCurrencyBRL(diff)}`,
-            [{ text: 'OK', style: 'default' }]
-          );
-        } else {
-          showAlert('Sucesso', 'Conta atualizada com sucesso!', [{ text: 'OK', style: 'default' }]);
-        }
+        showAlert('Sucesso', 'Conta atualizada com sucesso!', [{ text: 'OK', style: 'default' }]);
       } else {
         showAlert('Erro', 'Não foi possível atualizar a conta', [{ text: 'OK', style: 'default' }]);
       }
@@ -587,22 +559,17 @@ export default function ConfigureAccounts({ navigation }: any) {
                 </View>
               </View>
 
-              {/* Saldo atual */}
+              {/* Saldo atual (somente leitura) */}
               <View style={styles.formGroup}>
                 <Text style={[styles.label, { color: colors.text }]}>Saldo atual</Text>
-                <View style={[styles.inputContainer, { borderColor: colors.border }]}>
-                  <Text style={[styles.currency, { color: colors.textMuted }]}>R$</Text>
-                  <TextInput
-                    value={editBalance}
-                    onChangeText={setEditBalance}
-                    placeholder="0,00"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="numeric"
-                    style={[styles.input, { color: colors.text }]}
-                  />
+                <View style={[styles.balanceDisplay, { backgroundColor: colors.bg, borderColor: colors.border }]}>
+                  <MaterialCommunityIcons name="cash" size={20} color={colors.textMuted} />
+                  <Text style={[styles.balanceText, { color: colors.text }]}>
+                    {formatCurrencyBRL(editingAccount?.balance || 0)}
+                  </Text>
                 </View>
                 <Text style={[styles.helpText, { color: colors.textMuted }]}>
-                  Ajuste o saldo diretamente se precisar corrigir
+                  Para ajustar o saldo, use lançamentos ou "Resetar conta"
                 </Text>
               </View>
 
@@ -1040,5 +1007,17 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  balanceDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+  },
+  balanceText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
