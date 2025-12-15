@@ -266,7 +266,7 @@ export default function ConfigureAccounts({ navigation }: any) {
     
     showAlert(
       'Excluir permanentemente?',
-      `A conta "${editingAccount.name}" será excluída e não poderá ser recuperada. Lançamentos associados NÃO serão excluídos.`,
+      `A conta "${editingAccount.name}" será excluída e não poderá ser recuperada. Os lançamentos associados a ela também serão excluídos.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
@@ -314,7 +314,7 @@ export default function ConfigureAccounts({ navigation }: any) {
   async function confirmDelete(accountId: string, accountName: string) {
     showAlert(
       'Excluir permanentemente?',
-      `A conta "${accountName}" será excluída e não poderá ser recuperada. Lançamentos associados NÃO serão excluídos.`,
+      `A conta "${accountName}" será excluída e não poderá ser recuperada. Os lançamentos associados a ela também serão excluídos.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { 

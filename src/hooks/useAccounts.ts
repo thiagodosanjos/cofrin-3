@@ -113,8 +113,9 @@ export function useAccounts(includeArchived: boolean = false) {
 
   // Deletar conta
   const deleteAccount = async (accountId: string): Promise<boolean> => {
+    if (!user?.uid) return false;
     try {
-      await accountService.deleteAccount(accountId);
+      await accountService.deleteAccount(accountId, user.uid);
       setAccounts(prev => prev.filter(acc => acc.id !== accountId));
       return true;
     } catch (err) {

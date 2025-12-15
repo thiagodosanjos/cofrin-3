@@ -669,24 +669,44 @@ export async function deleteTransactionsByAccount(
   accountId: string
 ): Promise<{ deleted: number; error?: string }> {
   try {
-    // Buscar todas as transações da conta
-    const q = query(
+    // Buscar todas as transações associadas à conta:
+    // - conta como origem (accountId)
+    // - conta como destino em transferências (toAccountId)
+    const q1 = query(
       transactionsRef,
       where('userId', '==', userId),
       where('accountId', '==', accountId)
     );
 
-    const snapshot = await getDocs(q);
-    
-    if (snapshot.empty) {
+    const q2 = query(
+      transactionsRef,
+      where('userId', '==', userId),
+      where('toAccountId', '==', accountId)
+    );
+
+    const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+    const transactions = [
+      ...snapshot1.docs.map(d => ({ id: d.id, ...d.data() })),
+      ...snapshot2.docs.map(d => ({ id: d.id, ...d.data() })),
+    ] as Transaction[];
+
+    const uniqueTransactions = transactions.filter(
+      (t, index, self) => self.findIndex(x => x.id === t.id) === index
+    );
+
+    if (uniqueTransactions.length === 0) {
       return { deleted: 0 };
     }
 
-    // Deletar cada transação
-    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
+    // Deletar usando a função padrão, para reverter saldos e ajustar metas quando necessário
+    let deleted = 0;
+    for (const transaction of uniqueTransactions) {
+      await deleteTransaction(transaction);
+      deleted++;
+    }
 
-    return { deleted: snapshot.docs.length };
+    return { deleted };
   } catch (error) {
     console.error('Erro ao deletar transações da conta:', error);
     return { deleted: 0, error: 'Erro ao deletar transações' };
@@ -698,14 +718,23 @@ export async function countTransactionsByAccount(
   userId: string,
   accountId: string
 ): Promise<number> {
-  const q = query(
+  const q1 = query(
     transactionsRef,
     where('userId', '==', userId),
     where('accountId', '==', accountId)
   );
 
-  const snapshot = await getDocs(q);
-  return snapshot.docs.length;
+  const q2 = query(
+    transactionsRef,
+    where('userId', '==', userId),
+    where('toAccountId', '==', accountId)
+  );
+
+  const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+  const ids = new Set<string>();
+  snapshot1.docs.forEach(d => ids.add(d.id));
+  snapshot2.docs.forEach(d => ids.add(d.id));
+  return ids.size;
 }
 
 // ==========================================
