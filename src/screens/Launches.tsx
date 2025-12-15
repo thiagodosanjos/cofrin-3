@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useCustomAlert } from "../hooks/useCustomAlert";
 import CustomAlert from "../components/CustomAlert";
 import TransactionsList, { TransactionListItem } from '../components/transactions/TransactionsList';
@@ -18,8 +18,8 @@ import MainLayout from '../components/MainLayout';
 import { spacing, borderRadius, getShadow } from '../theme';
 import type { Transaction, TransactionStatus } from '../types/firebase';
 import {
-    generateBillsForMonth,
-    CreditCardBillWithTransactions
+  generateBillsForMonth,
+  CreditCardBillWithTransactions
 } from '../services/creditCardBillService';
 
 // Tipos dos parâmetros de navegação
@@ -76,7 +76,7 @@ export default function Launches() {
   const [billsLoading, setBillsLoading] = useState(false);
   
   // Hook de cartões de crédito
-  const { activeCards } = useCreditCards();
+  const { activeCards, refresh: refreshCreditCards } = useCreditCards();
 
   // Hook do Firebase - sempre passar mês/ano; incluir filterAccountId quando houver
   const transactionsOptions = {
@@ -156,8 +156,17 @@ export default function Launches() {
   useEffect(() => {
     if (refreshKey > 0) {
       refresh();
+      refreshCreditCards();
     }
-  }, [refreshKey]);
+  }, [refreshKey, refresh, refreshCreditCards]);
+
+  // Refresh quando a tela ganhar foco (ex: voltar de Cartões/Contas)
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+      refreshCreditCards();
+    }, [refresh, refreshCreditCards])
+  );
 
   // Converte transações do Firebase para o formato do TransactionsList
   // Filtra transações de cartão de crédito (elas aparecem apenas nas faturas)

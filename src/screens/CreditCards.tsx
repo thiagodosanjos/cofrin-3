@@ -13,11 +13,13 @@ import { CreditCard } from "../types/firebase";
 import { formatCurrencyBRL } from "../utils/format";
 import { deleteTransactionsByCreditCard, countTransactionsByCreditCard } from "../services/transactionService";
 import { updateCreditCard as updateCreditCardService } from "../services/creditCardService";
+import { useTransactionRefresh } from "../contexts/transactionRefreshContext";
 
 export default function CreditCards({ navigation }: any) {
   const { colors } = useAppTheme();
   const { user } = useAuth();
   const { alertState, showAlert, hideAlert } = useCustomAlert();
+  const { triggerRefresh } = useTransactionRefresh();
   
   const [name, setName] = useState('');
   const [limit, setLimit] = useState('');
@@ -135,6 +137,7 @@ export default function CreditCards({ navigation }: any) {
         setDueDay('');
         setSelectedAccountId('');
         setSelectedAccountName('');
+        triggerRefresh();
         showAlert('Sucesso', 'Cartão cadastrado com sucesso!', [{ text: 'OK', style: 'default' }]);
       } else {
         showAlert('Erro', 'Não foi possível cadastrar o cartão', [{ text: 'OK', style: 'default' }]);
@@ -159,6 +162,8 @@ export default function CreditCards({ navigation }: any) {
             const result = await archiveCreditCard(cardId);
             if (!result) {
               showAlert('Erro', 'Não foi possível arquivar o cartão', [{ text: 'OK', style: 'default' }]);
+            } else {
+              triggerRefresh();
             }
           }
         },
@@ -213,6 +218,7 @@ export default function CreditCards({ navigation }: any) {
       if (result) {
         setEditModalVisible(false);
         setEditingCard(null);
+        triggerRefresh();
         showAlert('Sucesso', 'Cartão atualizado com sucesso!', [{ text: 'OK', style: 'default' }]);
       } else {
         showAlert('Erro', 'Não foi possível atualizar o cartão', [{ text: 'OK', style: 'default' }]);
@@ -256,6 +262,8 @@ export default function CreditCards({ navigation }: any) {
               
               // Zerar o valor usado do cartão
               await updateCreditCardService(editingCard.id, { currentUsed: 0 });
+
+              triggerRefresh();
               
               showAlert(
                 'Cartão resetado', 
@@ -293,6 +301,7 @@ export default function CreditCards({ navigation }: any) {
             if (result) {
               setEditModalVisible(false);
               setEditingCard(null);
+              triggerRefresh();
             } else {
               showAlert('Erro', 'Não foi possível arquivar o cartão', [{ text: 'OK', style: 'default' }]);
             }
@@ -319,6 +328,7 @@ export default function CreditCards({ navigation }: any) {
             if (result) {
               setEditModalVisible(false);
               setEditingCard(null);
+              triggerRefresh();
               showAlert('Sucesso', 'Cartão excluído com sucesso!', [{ text: 'OK', style: 'default' }]);
             } else {
               showAlert('Erro', 'Não foi possível excluir o cartão', [{ text: 'OK', style: 'default' }]);

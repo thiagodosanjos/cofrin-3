@@ -12,6 +12,7 @@ import { AccountType, ACCOUNT_TYPE_LABELS, Account } from "../types/firebase";
 import { formatCurrencyBRL } from "../utils/format";
 import { deleteTransactionsByAccount, countTransactionsByAccount } from "../services/transactionService";
 import { setAccountBalance } from "../services/accountService";
+import { useTransactionRefresh } from "../contexts/transactionRefreshContext";
 
 interface AccountTypeOption {
   id: AccountType;
@@ -35,6 +36,7 @@ export default function ConfigureAccounts({ navigation }: any) {
   const { colors } = useAppTheme();
   const { user } = useAuth();
   const { alertState, showAlert, hideAlert } = useCustomAlert();
+  const { triggerRefresh } = useTransactionRefresh();
   
   const [name, setName] = useState('');
   const [selectedType, setSelectedType] = useState<AccountType>('checking');
@@ -101,6 +103,7 @@ export default function ConfigureAccounts({ navigation }: any) {
         setSelectedType('checking');
         setSelectedIcon('bank');
         setIncludeInTotal(true);
+        triggerRefresh();
         showAlert('Sucesso', 'Conta criada com sucesso!', [{ text: 'OK', style: 'default' }]);
       } else {
         showAlert('Erro', 'Não foi possível criar a conta', [{ text: 'OK', style: 'default' }]);
@@ -136,6 +139,7 @@ export default function ConfigureAccounts({ navigation }: any) {
       if (result) {
         setEditModalVisible(false);
         setEditingAccount(null);
+        triggerRefresh();
         showAlert('Sucesso', 'Conta atualizada com sucesso!', [{ text: 'OK', style: 'default' }]);
       } else {
         showAlert('Erro', 'Não foi possível atualizar a conta', [{ text: 'OK', style: 'default' }]);
@@ -203,6 +207,9 @@ export default function ConfigureAccounts({ navigation }: any) {
               
               // Atualizar a conta local para refletir o saldo zerado
               await updateAccount(editingAccount.id, { balance: 0 });
+
+              // Notificar outras telas (Home/Lançamentos) para recarregar dados
+              triggerRefresh();
               
               // Mensagem de sucesso dinâmica
               let successMessage = '';
@@ -251,6 +258,7 @@ export default function ConfigureAccounts({ navigation }: any) {
             if (result) {
               setEditModalVisible(false);
               setEditingAccount(null);
+              triggerRefresh();
             } else {
               showAlert('Erro', 'Não foi possível arquivar a conta', [{ text: 'OK', style: 'default' }]);
             }
@@ -277,6 +285,7 @@ export default function ConfigureAccounts({ navigation }: any) {
             if (result) {
               setEditModalVisible(false);
               setEditingAccount(null);
+              triggerRefresh();
               showAlert('Sucesso', 'Conta excluída com sucesso!', [{ text: 'OK', style: 'default' }]);
             } else {
               showAlert('Erro', 'Não foi possível excluir a conta', [{ text: 'OK', style: 'default' }]);
@@ -299,6 +308,8 @@ export default function ConfigureAccounts({ navigation }: any) {
             const result = await archiveAccount(accountId);
             if (!result) {
               showAlert('Erro', 'Não foi possível arquivar a conta', [{ text: 'OK', style: 'default' }]);
+            } else {
+              triggerRefresh();
             }
           }
         },
@@ -323,6 +334,7 @@ export default function ConfigureAccounts({ navigation }: any) {
           onPress: async () => {
             const result = await deleteAccount(accountId);
             if (result) {
+              triggerRefresh();
               showAlert('Sucesso', 'Conta excluída com sucesso!', [{ text: 'OK', style: 'default' }]);
             } else {
               showAlert('Erro', 'Não foi possível excluir a conta', [{ text: 'OK', style: 'default' }]);

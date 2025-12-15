@@ -23,6 +23,7 @@ import { useTransactions } from '../../hooks/useFirebaseTransactions';
 import { useCustomAlert } from '../../hooks/useCustomAlert';
 import CustomAlert from '../CustomAlert';
 import { TransactionType, RecurrenceType, CreateTransactionInput } from '../../types/firebase';
+import { useTransactionRefresh } from '../../contexts/transactionRefreshContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -116,11 +117,12 @@ export default function AddTransactionModal({
   editTransaction,
 }: Props) {
   const { colors } = useAppTheme();
+  const { refreshKey } = useTransactionRefresh();
 
   // Firebase hooks
-  const { categories } = useCategories();
-  const { activeAccounts } = useAccounts();
-  const { activeCards } = useCreditCards();
+  const { categories, refresh: refreshCategories } = useCategories();
+  const { activeAccounts, refresh: refreshAccounts } = useAccounts();
+  const { activeCards, refresh: refreshCreditCards } = useCreditCards();
   const { createTransaction, updateTransaction } = useTransactions();
   const navigation = useNavigation<any>();
 
@@ -226,6 +228,11 @@ export default function AddTransactionModal({
   // Reset form when modal opens or populate with edit data
   useEffect(() => {
     if (visible) {
+      // Recarregar listas quando abrir (corrige UI desatualizada após criar/editar/excluir)
+      refreshCategories();
+      refreshAccounts();
+      refreshCreditCards();
+
       setActivePicker('none');
       setSaving(false);
       
@@ -295,7 +302,7 @@ export default function AddTransactionModal({
         }
       }
     }
-  }, [visible, initialType, editTransaction]); // Removido activeAccounts e categories
+  }, [visible, initialType, editTransaction, refreshCategories, refreshAccounts, refreshCreditCards, refreshKey]); // Removido activeAccounts e categories
 
   // Sync tempDate when opening date picker
   useEffect(() => {
