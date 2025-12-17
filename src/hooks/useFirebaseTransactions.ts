@@ -180,12 +180,13 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     }
   };
 
-  // Filtrar por tipo
-  const incomeTransactions = transactions.filter(t => t.type === 'income');
-  const expenseTransactions = transactions.filter(t => t.type === 'expense');
+  // Filtrar por tipo (excluir transações de cartão de crédito)
+  const incomeTransactions = transactions.filter(t => t.type === 'income' && !t.creditCardId);
+  const expenseTransactions = transactions.filter(t => t.type === 'expense' && !t.creditCardId);
   const transferTransactions = transactions.filter(t => t.type === 'transfer');
 
   // Calcular totais do mês atual (apenas concluídos para o saldo real)
+  // Transações de cartão NÃO são contabilizadas aqui (apenas quando a fatura é paga)
   const totalIncome = incomeTransactions
     .filter(t => t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);

@@ -5,7 +5,7 @@
 import { collection, doc, addDoc, updateDoc, getDocs, getDoc, query, where, Timestamp } from 'firebase/firestore';
 import { db, COLLECTIONS } from './firebase';
 import { CreditCardBill, Transaction, CreditCard } from '../types/firebase';
-import { updateAccountBalance } from './accountService';
+import { updateAccountBalance, getAccountById } from './accountService';
 import { getCreditCardById, updateCreditCard } from './creditCardService';
 
 const billsRef = collection(db, COLLECTIONS.CREDIT_CARD_BILLS);
@@ -264,13 +264,53 @@ export async function payBill(
   amount: number
 ): Promise<void> {
   const now = Timestamp.now();
+  const currentDate = now.toDate();
+  const month = currentDate.getMonth() + 1;
+  const year = currentDate.getFullYear();
 
-  // Atualizar fatura como paga
+  // Buscar dados da conta e do cartão
+  const account = await getAccountById(accountId);
+  const creditCard = await getCreditCardById(creditCardId);
+
+  if (!account || !creditCard) {
+    throw new Error('Conta ou cartão não encontrado');
+  }
+
+  // Buscar dados da fatura para pegar o mês/ano da fatura
   const billDocRef = doc(billsRef, billId);
+  const billSnapshot = await getDoc(billDocRef);
+  const billData = billSnapshot.data() as CreditCardBill;
+
+  // Criar transação de pagamento da fatura
+  const paymentTransaction = {
+    userId: account.userId,
+    type: 'expense' as const,
+    amount,
+    description: `Pagamento fatura ${creditCard.name} - ${getMonthName(billData.month)}/${billData.year}`,
+    date: now,
+    month,
+    year,
+    accountId,
+    accountName: account.name,
+    categoryId: 'credit-card-payment',
+    categoryName: 'Pagamento de Cartão',
+    categoryIcon: 'credit-card',
+    creditCardBillId: billId, // Marcar que esta transação é um pagamento de fatura
+    recurrence: 'none' as const,
+    status: 'completed' as const,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // Adicionar transação
+  const transactionDocRef = await addDoc(transactionsRef, paymentTransaction);
+
+  // Atualizar fatura como paga e guardar o ID da transação
   await updateDoc(billDocRef, {
     isPaid: true,
     paidAt: now,
     paidFromAccountId: accountId,
+    paymentTransactionId: transactionDocRef.id,
     totalAmount: amount,
     updatedAt: now,
   });
@@ -301,6 +341,7 @@ export async function unpayBill(
 
   const billData = snapshot.data() as any;
   const paidFromAccountId: string | undefined = billData.paidFromAccountId;
+  const paymentTransactionId: string | undefined = billData.paymentTransactionId;
   const creditCardId: string = billData.creditCardId;
   const month: number = billData.month;
   const year: number = billData.year;
@@ -311,11 +352,24 @@ export async function unpayBill(
     throw new Error('Fatura não está marcada como paga ou não possui conta de pagamento');
   }
 
+  // Deletar a transação de pagamento, se existir
+  if (paymentTransactionId) {
+    const transactionDocRef = doc(transactionsRef, paymentTransactionId);
+    const transactionSnapshot = await getDoc(transactionDocRef);
+    if (transactionSnapshot.exists()) {
+      const transactionData = transactionSnapshot.data() as Transaction;
+      // Importar e usar a função de deletar transação
+      const { deleteTransaction } = await import('./transactionService');
+      await deleteTransaction({ id: paymentTransactionId, ...transactionData } as Transaction);
+    }
+  }
+
   // Atualizar fatura como não paga
   await updateDoc(billDocRef, {
     isPaid: false,
     paidAt: null,
     paidFromAccountId: null,
+    paymentTransactionId: null,
     updatedAt: now,
   });
 

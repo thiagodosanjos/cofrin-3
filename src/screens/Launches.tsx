@@ -170,9 +170,10 @@ export default function Launches() {
 
   // Converte transações do Firebase para o formato do TransactionsList
   // Filtra transações de cartão de crédito (elas aparecem apenas nas faturas)
+  // Filtra transações de pagamento de fatura (são automáticas e redundantes visualmente)
   const listItems = useMemo(() => {
     return transactions
-      .filter((t: Transaction) => !t.creditCardId) // Exclui transações de cartão
+      .filter((t: Transaction) => !t.creditCardId && !t.creditCardBillId) // Exclui transações de cartão e pagamentos de fatura
       .map((t: Transaction) => ({
         id: t.id,
         date: t.date.toDate().toISOString().split('T')[0],
@@ -270,6 +271,16 @@ export default function Launches() {
     // Encontrar a transação original do Firebase
     const originalTransaction = transactions.find(t => t.id === item.id);
     if (!originalTransaction) return;
+
+    // Bloquear edição de transações de pagamento de fatura
+    if (originalTransaction.creditCardBillId) {
+      showAlert(
+        'Ação não permitida',
+        'Esta transação é um pagamento de fatura de cartão de crédito. Para desfazer o pagamento, acesse a fatura do cartão.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     const editData: EditableTransaction = {
       id: originalTransaction.id,

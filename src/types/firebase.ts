@@ -135,6 +135,9 @@ export interface Transaction extends BaseDocument {
   goalId?: string;
   goalName?: string;
   
+  // Pagamento de fatura de cartão
+  creditCardBillId?: string; // Se esta transação é um pagamento de fatura
+  
   // Para organização por período
   month: number; // 1-12
   year: number;
@@ -160,6 +163,7 @@ export interface CreditCardBill extends BaseDocument {
   isPaid: boolean;
   paidAt?: Timestamp;
   paidFromAccountId?: string;
+  paymentTransactionId?: string;
 }
 
 // ==========================================

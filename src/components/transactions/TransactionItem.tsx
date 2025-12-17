@@ -15,6 +15,7 @@ interface Props {
   categoryIcon?: string;
   status?: 'pending' | 'completed' | 'cancelled';
   goalName?: string; // Se for aporte em meta
+  isLocked?: boolean; // Se for pagamento de fatura (não pode ser editado)
   onPress?: () => void;
   onEdit?: () => void;
   onStatusPress?: () => void;
@@ -30,6 +31,7 @@ function TransactionItemComponent({
   categoryIcon,
   status = 'completed',
   goalName,
+  isLocked = false,
   onPress,
   onEdit,
   onStatusPress,
@@ -49,7 +51,7 @@ function TransactionItemComponent({
     return incomeColor;
   };
   
-  const color = getColor();
+  const color = isLocked ? colors.textMuted : getColor();
   const initial = title.charAt(0).toUpperCase();
 
   // Subtítulo: categoria + conta (ou indicação de meta)
@@ -63,15 +65,21 @@ function TransactionItemComponent({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={isLocked ? undefined : onPress}
+      disabled={isLocked}
       style={({ pressed }) => [
         styles.row,
-        { backgroundColor: pressed ? colors.grayLight : colors.card, borderBottomColor: colors.border }
+        { 
+          backgroundColor: isLocked ? colors.grayLight : (pressed ? colors.grayLight : colors.card), 
+          borderBottomColor: colors.border,
+          opacity: isLocked ? 0.6 : 1,
+        }
       ]}
     >
       {/* Ícone de status (concluído/pendente) */}
       <Pressable
-        onPress={onStatusPress}
+        onPress={isLocked ? undefined : onStatusPress}
+        disabled={isLocked}
         hitSlop={8}
         style={({ pressed }) => [
           styles.statusButton,
@@ -92,13 +100,23 @@ function TransactionItemComponent({
       </View>
       
       <View style={styles.content}>
-        <Text style={[styles.title, { color: status === 'pending' ? colors.textMuted : colors.text }]} numberOfLines={1}>{title}</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: status === 'pending' ? colors.textMuted : colors.text }]} numberOfLines={1}>
+            {title}
+          </Text>
+          {isLocked && (
+            <MaterialCommunityIcons name="lock" size={14} color={colors.textMuted} style={{ marginLeft: 6 }} />
+          )}
+        </View>
         {subtitle && <Text style={[styles.account, { color: colors.textMuted }]}>{subtitle}</Text>}
+        {isLocked && (
+          <Text style={[styles.lockedLabel, { color: colors.textMuted }]}>Pagamento de fatura • Não editável</Text>
+        )}
       </View>
       
       <Text style={[styles.amount, { color: status === 'pending' ? colors.textMuted : color }]}>{formatCurrencyBRL(amount)}</Text>
       
-      {onEdit && (
+      {onEdit && !isLocked && (
         <Pressable
           onPress={onEdit}
           hitSlop={8}
@@ -145,6 +163,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: spacing.sm,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   title: {
     fontSize: 15,
     fontWeight: '500',
@@ -152,6 +174,11 @@ const styles = StyleSheet.create({
   account: {
     fontSize: 13,
     marginTop: 2,
+  },
+  lockedLabel: {
+    fontSize: 11,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   amount: { 
     fontWeight: '700', 
