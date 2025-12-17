@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    View,
-    StyleSheet,
-    ScrollView,
-    Platform,
-    Pressable,
-    Modal,
-    Dimensions,
-    Text,
-    TextInput
+  View,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  Pressable,
+  Modal,
+  Dimensions,
+  Text,
+  TextInput
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -1110,18 +1110,7 @@ export default function AddTransactionModal({
               <View style={[styles.sheet, { backgroundColor: colors.bg }]}> 
                 {/* Header colorido */}
                 <View style={[styles.header, { backgroundColor: headerColor }]}> 
-                  {/* Botão fechar */}
-                  <Pressable onPress={onClose} style={styles.closeButton} hitSlop={12}> 
-                    <MaterialCommunityIcons name="close" size={24} color="#fff" /> 
-                  </Pressable>
-                  {/* Título */}
-                  <Text style={styles.headerTitle}> 
-                    {isEditMode 
-                      ? (type === 'despesa' ? 'Editar Despesa' : type === 'receita' ? 'Editar Receita' : 'Editar Transferência')
-                      : (type === 'despesa' ? 'Nova Despesa' : type === 'receita' ? 'Nova Receita' : 'Nova Transferência')
-                    }
-                  </Text>
-                  {/* Type selector */}
+                  {/* Type selector com título integrado */}
                   <View style={styles.typeSelector}> 
                     {(['despesa', 'receita', 'transfer'] as LocalTransactionType[]).map((t) => (
                       <Pressable
@@ -1133,19 +1122,24 @@ export default function AddTransactionModal({
                         ]}
                         disabled={activeAccounts.length === 0}
                       >
-                        <MaterialCommunityIcons
-                          name={t === 'despesa' ? 'arrow-down' : t === 'receita' ? 'arrow-up' : 'swap-horizontal'}
-                          size={16}
-                          color={type === t ? headerColor : 'rgba(255,255,255,0.7)'}
-                        />
-                        <Text
-                          style={[ 
-                            styles.typeChipText,
-                            type === t && styles.typeChipTextActive,
-                          ]}
-                        >
-                          {t === 'despesa' ? 'Despesa' : t === 'receita' ? 'Receita' : 'Transf.'}
-                        </Text>
+                        <View style={{ alignItems: 'center' }}>
+                          <Text
+                            style={[ 
+                              styles.typeChipTitle,
+                              type === t && styles.typeChipTitleActive,
+                            ]}
+                          >
+                            {isEditMode ? 'Editar' : (t === 'transfer' ? 'Nova' : 'Nov' + (t === 'despesa' ? 'a' : 'a'))}
+                          </Text>
+                          <Text
+                            style={[ 
+                              styles.typeChipText,
+                              type === t && styles.typeChipTextActive,
+                            ]}
+                          >
+                            {t === 'despesa' ? 'Despesa' : t === 'receita' ? 'Receita' : 'Transf.'}
+                          </Text>
+                        </View>
                       </Pressable>
                     ))}
                   </View>
@@ -1158,6 +1152,7 @@ export default function AddTransactionModal({
                     placeholderTextColor="rgba(255,255,255,0.6)"
                     selectionColor="#fff"
                     editable={activeAccounts.length > 0}
+                    autoFocus={activeAccounts.length > 0}
                   />
                 </View>
                 {/* Onboarding message if no accounts */}
@@ -1389,6 +1384,16 @@ export default function AddTransactionModal({
                     </Text>
                   </Pressable>
                 </View>
+                {/* Botão Cancelar */}
+                <Pressable
+                  onPress={onClose}
+                  style={({ pressed }) => [
+                    styles.cancelButton,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancelar</Text>
+                </Pressable>
                   </View>
                 )}
               </View>
@@ -1437,39 +1442,54 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     paddingHorizontal: spacing.md,
   },
-  closeButton: {
+  closeButtonCircle: {
     position: 'absolute',
-    top: spacing.md,
+    top: spacing.sm,
     right: spacing.md,
     zIndex: 10,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   typeSelector: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.sm,
+    marginTop: 0,
   },
   typeChip: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.lg,
     backgroundColor: 'rgba(255,255,255,0.2)',
     gap: spacing.xs,
   },
   typeChipActive: {
     backgroundColor: '#fff',
   },
+  typeChipTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  typeChipTitleActive: {
+    color: '#64748b',
+  },
   typeChipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
   },
   typeChipTextActive: {
     color: '#1f2937',
@@ -1587,6 +1607,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#dc2626',
     marginLeft: spacing.xs,
+  },
+  cancelButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   onboardingButton: {
     alignSelf: 'center',
