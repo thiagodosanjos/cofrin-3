@@ -42,8 +42,8 @@ export default function MainLayout({ children }: Props) {
         onHome={() => navigation.navigate('Bem-vindo' as any)}
         onAdd={openAdd}
         onLaunches={() => navigation.navigate('Lançamentos' as any)}
-        onGoals={() => navigation.navigate('Metas do ano' as any)}
         onReports={() => navigation.navigate('Relatórios' as any)}
+        onOthers={() => navigation.navigate('Configurações' as any)}
       />
 
       <AddTransactionModal

@@ -3,7 +3,7 @@ import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme } from '../../contexts/themeContext';
 import { spacing, borderRadius, getShadow } from '../../theme';
-import { Goal, GOAL_TIMEFRAME_LABELS } from '../../types/firebase';
+import { Goal } from '../../types/firebase';
 
 interface Props {
   goal: Goal | null;
@@ -22,15 +22,13 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onGo
       <View style={[styles.card, { backgroundColor: colors.card }, getShadow(colors)]}>
         <View style={styles.header}>
           <View style={[styles.iconCircle, { backgroundColor: colors.primaryBg }]}>
-            <MaterialCommunityIcons name="flag-checkered" size={24} color={colors.primary} />
+            <MaterialCommunityIcons name="target" size={24} color={colors.primary} />
           </View>
-          <View style={styles.titleContainer}>
-            <Text style={[styles.title, { color: colors.text }]}>Meta financeira</Text>
-          </View>
+          <Text style={[styles.title, { color: colors.text }]}>Meta financeira</Text>
         </View>
 
         <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-          Definir um objetivo ajuda a manter o foco nas decisões do dia a dia.
+          Ter um objetivo claro torna suas escolhas financeiras mais fáceis.
         </Text>
 
         <Pressable
@@ -49,18 +47,13 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onGo
   }
 
   // Card quando há meta ativa
-  const timeframeLabel = GOAL_TIMEFRAME_LABELS[goal.timeframe];
-  const timeframeColor = 
-    goal.timeframe === 'short' ? colors.income :
-    goal.timeframe === 'medium' ? colors.warning || '#F59E0B' :
-    colors.primary;
-
   const motivationalText = 
-    progressPercentage >= 75 ? 'Você está quase lá! Continue assim.' :
-    progressPercentage >= 50 ? `Você já conquistou ${Math.round(progressPercentage)}% da sua meta.` :
-    progressPercentage >= 25 ? 'Avançar aos poucos também é progresso.' :
-    progressPercentage > 0 ? 'Cada pequena conquista conta.' :
-    'Pequenas decisões hoje constroem grandes conquistas.';
+    progressPercentage >= 90 ? 'Falta pouco! 🎯' :
+    progressPercentage >= 75 ? 'Você está quase lá!' :
+    progressPercentage >= 50 ? 'Metade do caminho já foi!' :
+    progressPercentage >= 25 ? 'Todo progresso conta!' :
+    progressPercentage > 0 ? 'Ótimo começo!' :
+    'Comece agora mesmo!';
 
   return (
     <Pressable
@@ -75,7 +68,7 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onGo
       <View style={styles.header}>
         <View style={[styles.iconCircle, { backgroundColor: colors.primaryBg }]}>
           <MaterialCommunityIcons 
-            name={(goal.icon as any) || 'flag-checkered'} 
+            name={(goal.icon as any) || 'target'} 
             size={24} 
             color={colors.primary} 
           />
@@ -84,11 +77,9 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onGo
           <Text style={[styles.goalName, { color: colors.text }]} numberOfLines={1}>
             {goal.name}
           </Text>
-          <View style={[styles.badge, { backgroundColor: `${timeframeColor}15` }]}>
-            <Text style={[styles.badgeText, { color: timeframeColor }]}>
-              {timeframeLabel}
-            </Text>
-          </View>
+          <Text style={[styles.motivationalText, { color: colors.textMuted }]}>
+            {motivationalText}
+          </Text>
         </View>
       </View>
 
@@ -110,26 +101,21 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onGo
         </Text>
       </View>
 
-      {/* Texto motivacional */}
-      <View style={styles.bottomRow}>
-        <Text style={[styles.motivationalText, { color: colors.textMuted, flex: 1 }]}>
-          {motivationalText}
-        </Text>
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            onAddPress?.();
-          }}
-          style={({ pressed }) => [
-            styles.addButton,
-            { backgroundColor: colors.primaryBg },
-            pressed && { opacity: 0.7 }
-          ]}
-        >
-          <MaterialCommunityIcons name="plus" size={16} color={colors.primary} />
-          <Text style={[styles.addButtonText, { color: colors.primary }]}>Adicionar</Text>
-        </Pressable>
-      </View>
+      {/* Botão adicionar */}
+      <Pressable
+        onPress={(e) => {
+          e.stopPropagation();
+          onAddPress?.();
+        }}
+        style={({ pressed }) => [
+          styles.addButton,
+          { backgroundColor: colors.primaryBg },
+          pressed && { opacity: 0.7 }
+        ]}
+      >
+        <MaterialCommunityIcons name="plus" size={16} color={colors.primary} />
+        <Text style={[styles.addButtonText, { color: colors.primary }]}>Adicionar progresso</Text>
+      </Pressable>
     </Pressable>
   );
 }

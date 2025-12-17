@@ -11,8 +11,8 @@ import { useEffect, useMemo, useCallback, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import MainLayout from "../components/MainLayout";
 import HomeOverview from "../components/home/HomeOverview";
-import BalanceCard from "../components/home/BalanceCard";
-import ExpensesByCategoryCard from "../components/ExpensesByCategoryCard";
+import FinancialHealthCard from "../components/home/FinancialHealthCard";
+import TopCategoryCard from "../components/home/TopCategoryCard";
 import CreditCardsCard from "../components/home/CreditCardsCard";
 import GoalCard from "../components/home/GoalCard";
 import CreateGoalModal from "../components/CreateGoalModal";
@@ -197,77 +197,73 @@ export default function Home() {
         <AppHeader />
         <View style={styles.centeredContainer}>
           <View style={styles.content}>
-        <HomeOverview
-          username={userName}
-          revenue={totalIncome}
-          expenses={totalExpense}
-          onSaveTransaction={triggerRefresh}
-        />
-
-        <View style={{ height: spacing.lg }} />
-        <View style={{ flexDirection: isNarrow ? 'column' : 'row' }}>
-          <View style={{ flex: 1 }}>
-            <BalanceCard 
-              balance={totalAccountsBalance} 
-              accounts={formattedAccounts} 
-              onAccountPress={handleAccountPress}
-              onAddPress={() => navigation.navigate('ConfigureAccounts')}
+            {/* 1. Header contextual com acesso rápido */}
+            <HomeOverview
+              username={userName}
+              revenue={totalIncome}
+              expenses={totalExpense}
+              onSaveTransaction={triggerRefresh}
             />
-          </View>
-          <View style={{ width: isNarrow ? '100%' : spacing.lg, height: isNarrow ? spacing.lg : 'auto' }} />
-          <View style={{ flex: 1 }}>
+
+            <View style={{ height: spacing.lg }} />
+
+            {/* 2. Saúde financeira do mês */}
+            <FinancialHealthCard 
+              income={totalIncome}
+              expense={totalExpense}
+              balance={balance}
+            />
+
+            <View style={{ height: spacing.lg }} />
+
+            {/* 3. Onde você gastou (categoria principal) */}
+            <TopCategoryCard 
+              expenses={categoryExpenses}
+              totalExpenses={report?.expense || totalExpense}
+              onPress={() => navigation.navigate('Relatórios')}
+            />
+
+            <View style={{ height: spacing.lg }} />
+
+            {/* 4. Compromissos de cartão (modo alerta) */}
             <CreditCardsCard 
-              cards={activeCards} 
+              cards={activeCards}
               onCardPress={handleCreditCardPress}
               onAddPress={handleAddCreditCard}
             />
-          </View>
-        </View>
 
-        <View style={{ height: spacing.lg }} />
-        
-        {/* Meta Financeira */}
-        <GoalCard 
-          goal={goal}
-          progressPercentage={progressPercentage}
-          onCreatePress={() => setShowGoalModal(true)}
-          onGoalPress={() => setShowGoalModal(true)}
-          onAddPress={() => setShowAddToGoalModal(true)}
-        />
+            {activeCards.filter(c => (c.currentUsed || 0) > 0).length > 0 && (
+              <View style={{ height: spacing.lg }} />
+            )}
 
-        {/* Modal de Criar/Editar Meta */}
-        <CreateGoalModal
-          visible={showGoalModal}
-          onClose={() => setShowGoalModal(false)}
-          onSave={handleSaveGoal}
-          onDelete={handleDeleteGoal}
-          existingGoal={goal}
-        />
-
-        {/* Modal de Adicionar à Meta */}
-        {goal && (
-          <AddToGoalModal
-            visible={showAddToGoalModal}
-            onClose={() => setShowAddToGoalModal(false)}
-            onSave={handleAddToGoal}
-            goal={goal}
-            progressPercentage={progressPercentage}
-            accounts={accounts}
-          />
-        )}
-
-        <View style={{ height: spacing.lg }} />
-        <View style={{ flexDirection: isNarrow ? 'column' : 'row' }}>
-          <View style={{ flex: 1 }}>
-            <ExpensesByCategoryCard 
-              expenses={categoryExpenses}
-              totalExpenses={report?.expense || totalExpense}
-              maxItems={3}
-              showTitle={true}
+            {/* 5. Meta financeira */}
+            <GoalCard 
+              goal={goal}
+              progressPercentage={progressPercentage}
+              onCreatePress={() => setShowGoalModal(true)}
+              onGoalPress={() => setShowGoalModal(true)}
+              onAddPress={() => setShowAddToGoalModal(true)}
             />
-          </View>
-          {!isNarrow && <View style={{ flex: 1 }} />}
-        </View>
+
+            {/* Modais */}
+            <CreateGoalModal
+              visible={showGoalModal}
+              onClose={() => setShowGoalModal(false)}
+              onSave={handleSaveGoal}
+              onDelete={handleDeleteGoal}
+              existingGoal={goal}
+            />
+
+            {goal && (
+              <AddToGoalModal
+                visible={showAddToGoalModal}
+                onClose={() => setShowAddToGoalModal(false)}
+                onSave={handleAddToGoal}
+                goal={goal}
+                progressPercentage={progressPercentage}
+                accounts={accounts}
+              />
+            )}
           </View>
         </View>
       </ScrollView>

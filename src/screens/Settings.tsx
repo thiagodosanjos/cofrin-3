@@ -39,8 +39,7 @@ export default function Settings({ navigation }: any) {
   ];
 
   const secondaryItems: MenuItem[] = [
-    { id: "notifications", label: "Notificações", icon: "bell-outline" },
-    { id: "help", label: "Ajuda & Suporte", icon: "help-circle-outline" },
+    { id: "education", label: "Educação financeira", icon: "school-outline", screen: "Education" },
     { id: "about", label: "Sobre o app", icon: "information-outline", screen: "About" },
   ];
 

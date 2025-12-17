@@ -13,12 +13,6 @@ interface Props {
   onAddPress?: () => void;
 }
 
-// Nome dos meses em português
-const MONTHS = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
-
 // Cores para os cartões baseado no nome
 const getCardColor = (name: string, customColor?: string): string => {
   if (customColor) return customColor;
@@ -29,13 +23,26 @@ const getCardColor = (name: string, customColor?: string): string => {
 
 export default function CreditCardsCard({ cards = [], totalBills = 0, onCardPress, onAddPress }: Props) {
   const { colors } = useAppTheme();
-  const currentMonth = MONTHS[new Date().getMonth()];
+  
+  // Filtrar apenas cartões com uso atual > 0 (compromissos pendentes)
+  const cardsWithCommitments = cards.filter(card => (card.currentUsed || 0) > 0);
+  
+  // Verificar se há alertas de alto uso (> 80%)
+  const hasHighUsage = cardsWithCommitments.some(card => {
+    const usagePercent = card.limit > 0 ? ((card.currentUsed || 0) / card.limit) * 100 : 0;
+    return usagePercent > 80;
+  });
 
-  // Componente de item do cartão
+  if (cardsWithCommitments.length === 0) {
+    return null; // Não mostrar o card se não houver compromissos
+  }
+
+  // Componente de item do cartão (simplificado)
   const CardRow = ({ card }: { card: CreditCard }) => {
     const cardColor = getCardColor(card.name, card.color);
     const used = card.currentUsed || 0;
     const usagePercent = card.limit > 0 ? (used / card.limit) * 100 : 0;
+    const isHighUsage = usagePercent > 80;
     
     return (
       <Pressable
@@ -57,31 +64,23 @@ export default function CreditCardsCard({ cards = [], totalBills = 0, onCardPres
           <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={1}>
             {card.name}
           </Text>
-          <View style={styles.cardMeta}>
-            <Text style={[styles.cardDue, { color: colors.textMuted }]}>
-              Fecha {card.closingDay} • Vence {card.dueDay}
-            </Text>
-          </View>
+          <Text style={[styles.cardDue, { color: colors.textMuted }]}>
+            Vence dia {card.dueDay}
+          </Text>
         </View>
 
         <View style={styles.cardBill}>
           <Text style={[
             styles.billValue, 
-            { color: used > 0 ? colors.expense : colors.income }
+            { color: isHighUsage ? colors.expense : colors.text }
           ]}>
             {formatCurrencyBRL(used)}
           </Text>
-          <View style={styles.usageBar}>
-            <View 
-              style={[
-                styles.usageFill, 
-                { 
-                  width: `${Math.min(usagePercent, 100)}%`,
-                  backgroundColor: usagePercent > 80 ? colors.expense : usagePercent > 50 ? colors.warning : colors.income,
-                }
-              ]} 
-            />
-          </View>
+          {isHighUsage && (
+            <View style={[styles.alertBadge, { backgroundColor: colors.dangerBg }]}>
+              <MaterialCommunityIcons name="alert" size={12} color={colors.danger} />
+            </View>
+          )}
         </View>
       </Pressable>
     );
@@ -89,77 +88,51 @@ export default function CreditCardsCard({ cards = [], totalBills = 0, onCardPres
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card }, getShadow(colors)]}>
-      {/* Header */}
+      {/* Header com alerta */}
       <View style={styles.header}>
         <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            Cartões de crédito
-          </Text>
+          <View style={styles.titleRow}>
+            <MaterialCommunityIcons 
+              name={hasHighUsage ? "alert-circle" : "calendar-clock"} 
+              size={20} 
+              color={hasHighUsage ? colors.expense : colors.primary} 
+            />
+            <Text style={[styles.title, { color: colors.text }]}>
+              Compromissos de cartão
+            </Text>
+          </View>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            {cards.length > 0 ? `${cards.length} cartão${cards.length > 1 ? 'ões' : ''}` : 'Nenhum cartão'}
+            {cardsWithCommitments.length} fatura{cardsWithCommitments.length > 1 ? 's' : ''} pendente{cardsWithCommitments.length > 1 ? 's' : ''} este mês
           </Text>
         </View>
-
-        <Pressable 
-          onPress={onAddPress}
-          style={({ pressed }) => [
-            styles.iconContainer, 
-            { backgroundColor: colors.primaryBg },
-            pressed && { opacity: 0.7 }
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="plus"
-            size={20}
-            color={colors.primary}
-          />
-        </Pressable>
       </View>
 
-      {/* Lista de cartões */}
-      {cards.length > 0 ? (
-        <View style={styles.cardsList}>
-          {cards.map((card) => (
-            <CardRow key={card.id} card={card} />
-          ))}
-        </View>
-      ) : (
-        <Pressable 
-          onPress={onAddPress}
-          style={({ pressed }) => [
-            styles.emptyContainer, 
-            { backgroundColor: colors.grayLight },
-            pressed && { opacity: 0.7 }
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="credit-card-plus-outline"
-            size={40}
-            color={colors.primary}
-          />
-          <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-            Adicionar cartão de crédito
-          </Text>
-        </Pressable>
-      )}
+      {/* Lista de cartões com compromissos */}
+      <View style={styles.cardsList}>
+        {cardsWithCommitments.map((card) => (
+          <CardRow key={card.id} card={card} />
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    padding: spacing.lg,
+    padding: spacing.md,
     borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: spacing.md,
   },
   titleSection: {
     flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: 4,
   },
   title: {
     fontSize: 16,
@@ -167,14 +140,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    marginTop: 2,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   cardsList: {
     gap: spacing.xs,
@@ -200,43 +165,25 @@ const styles = StyleSheet.create({
   cardName: {
     fontSize: 14,
     fontWeight: '500',
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
+    marginBottom: 2,
   },
   cardDue: {
-    fontSize: 11,
+    fontSize: 12,
   },
   cardBill: {
     alignItems: 'flex-end',
     minWidth: 80,
   },
   billValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
-  usageBar: {
-    width: 60,
-    height: 4,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 2,
-    marginTop: 4,
-    overflow: 'hidden',
-  },
-  usageFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  emptyContainer: {
-    height: 100,
+  alertBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: borderRadius.md,
-  },
-  emptyText: {
-    marginTop: spacing.xs,
-    fontSize: 13,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    marginTop: 4,
   },
 });
