@@ -846,39 +846,28 @@ export async function deleteTransactionsByAccount(
   accountId: string
 ): Promise<{ deleted: number; error?: string }> {
   try {
-    // Buscar todas as transações associadas à conta:
-    // - conta como origem (accountId)
-    // - conta como destino em transferências (toAccountId)
-    const q1 = query(
+    // Buscar apenas transações onde a conta é ORIGEM:
+    // - accountId = a conta sendo deletada/resetada
+    // IMPORTANTE: NÃO deletar transferências onde a conta é DESTINO (toAccountId),
+    // pois o dinheiro já foi transferido e pertence à conta destino
+    const q = query(
       transactionsRef,
       where('userId', '==', userId),
       where('accountId', '==', accountId)
     );
 
-    const q2 = query(
-      transactionsRef,
-      where('userId', '==', userId),
-      where('toAccountId', '==', accountId)
-    );
+    const snapshot = await getDocs(q);
+    const transactions = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Transaction[];
 
-    const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-
-    const transactions = [
-      ...snapshot1.docs.map(d => ({ id: d.id, ...d.data() })),
-      ...snapshot2.docs.map(d => ({ id: d.id, ...d.data() })),
-    ] as Transaction[];
-
-    const uniqueTransactions = transactions.filter(
-      (t, index, self) => self.findIndex(x => x.id === t.id) === index
-    );
-
-    if (uniqueTransactions.length === 0) {
+    if (transactions.length === 0) {
       return { deleted: 0 };
     }
 
-    // Deletar usando a função padrão, para reverter saldos e ajustar metas quando necessário
+    // Deletar cada transação individualmente
+    // Para transferências: vai reverter apenas da conta origem (accountId)
+    // A conta destino (toAccountId) mantém o valor recebido
     let deleted = 0;
-    for (const transaction of uniqueTransactions) {
+    for (const transaction of transactions) {
       await deleteTransaction(transaction);
       deleted++;
     }
@@ -895,23 +884,16 @@ export async function countTransactionsByAccount(
   userId: string,
   accountId: string
 ): Promise<number> {
-  const q1 = query(
+  // Contar apenas transações onde a conta é ORIGEM (accountId)
+  // Não contar transferências onde a conta é apenas destino (toAccountId)
+  const q = query(
     transactionsRef,
     where('userId', '==', userId),
     where('accountId', '==', accountId)
   );
 
-  const q2 = query(
-    transactionsRef,
-    where('userId', '==', userId),
-    where('toAccountId', '==', accountId)
-  );
-
-  const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-  const ids = new Set<string>();
-  snapshot1.docs.forEach(d => ids.add(d.id));
-  snapshot2.docs.forEach(d => ids.add(d.id));
-  return ids.size;
+  const snapshot = await getDocs(q);
+  return snapshot.size;
 }
 
 // ==========================================
