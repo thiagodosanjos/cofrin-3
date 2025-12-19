@@ -1,25 +1,22 @@
 import { useState } from "react";
 import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    ActivityIndicator,
-    StyleSheet,
-    Platform,
-    ScrollView,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  StyleSheet,
+  Platform,
+  ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { register, sendPasswordReset } from "../services/auth";
-import { useCustomAlert } from "../hooks/useCustomAlert";
-import CustomAlert from "../components/CustomAlert";
-import { useGoogleAuth } from "../services/googleAuth";
-import { palette, spacing, borderRadius } from "../theme";
+import { register } from "../services/auth";
 
-// Mesma cor da tela de Login
+// Cor principal da tela de registro (verde do app)
 const REGISTER_COLORS = {
-  primary: '#0d9488',
-  primaryDark: '#0f766e',
+  primary: '#0F9D8C',
+  primaryDark: '#0d9488',
   primaryLight: '#14b8a6',
 };
 
@@ -29,16 +26,8 @@ export default function Register({ navigation }: any) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { alertState, showAlert, hideAlert } = useCustomAlert();
-  const [showPasswordHelper, setShowPasswordHelper] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showResetForm, setShowResetForm] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetResult, setResetResult] = useState<string | null>(null);
-
-  const { request, promptAsync } = useGoogleAuth();
 
   function validateEmail(email: string) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -46,8 +35,7 @@ export default function Register({ navigation }: any) {
   }
 
   function isPasswordStrong(pw: string) {
-    const re = /^(?=.*[a-z])(?=.*[A-Z]).{6,}$/;
-    return re.test(pw);
+    return pw.length >= 6;
   }
 
   async function handleRegister() {
@@ -59,9 +47,7 @@ export default function Register({ navigation }: any) {
     }
 
     if (!isPasswordStrong(password)) {
-      setError(
-        "A senha precisa ter pelo menos 6 caracteres, com letra maiúscula e minúscula."
-      );
+      setError("A senha precisa ter pelo menos 6 caracteres.");
       return;
     }
 
@@ -81,7 +67,7 @@ export default function Register({ navigation }: any) {
       if (code.includes("auth/email-already-in-use")) {
         message = "Esse email já está em uso. Tente recuperar a senha ou use outro email.";
       } else if (code.includes("auth/weak-password")) {
-        message = "Senha fraca. Use no mínimo 6 caracteres e inclua letra maiúscula e minúscula.";
+        message = "Senha fraca. Use no mínimo 6 caracteres.";
       } else if (code.includes("auth/invalid-email")) {
         message = "Email inválido. Verifique o formato do e-mail.";
       } else if (code.includes("auth/network-request-failed")) {
@@ -94,63 +80,35 @@ export default function Register({ navigation }: any) {
     }
   }
 
-  async function handleSendResetEmail() {
-    setResetResult(null);
-    setResetLoading(true);
-    try {
-      const targetEmail = resetEmail.trim() || email.trim();
-      if (!validateEmail(targetEmail)) {
-        setResetResult("Por favor insira um email válido para recuperação.");
-        return;
-      }
 
-      await sendPasswordReset(targetEmail);
-      setResetResult("Link de recuperação enviado. Verifique sua caixa de entrada.");
-      setShowResetForm(false);
-    } catch (err: any) {
-      const code: string = err?.code || "";
-      let message = err?.message || "Erro ao enviar o link de recuperação.";
-      if (code.includes("auth/user-not-found")) {
-        message = "Usuário não encontrado. Verifique o email informado.";
-      } else if (code.includes("auth/invalid-email")) {
-        message = "Email inválido. Verifique o formato do e-mail.";
-      } else if (code.includes("auth/network-request-failed")) {
-        message = "Sem conexão. Verifique sua internet e tente novamente.";
-      }
-      setResetResult(message);
-    } finally {
-      setResetLoading(false);
-    }
-  }
-
-  async function handleGoogleRegister() {
-    setError(null);
-    if (!request) return;
-    promptAsync();
-  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Header com ícone */}
-      <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <MaterialCommunityIcons name="piggy-bank" size={56} color="#fff" />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header com ícone */}
+        <View style={styles.header}>
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons name="piggy-bank" size={64} color="#fff" />
+          </View>
+          <Text style={styles.appName}>Criar Conta</Text>
+          <Text style={styles.tagline}>
+              Controle financeiro pessoal
+          </Text>
         </View>
-        <Text style={styles.appName}>Criar Conta</Text>
-        <Text style={styles.tagline}>
-          Comece a organizar suas finanças{'\n'}de forma simples e prática
-        </Text>
-      </View>
 
       {/* Card de Registro */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Preencha seus dados</Text>
 
         <View style={styles.inputContainer}>
-          <MaterialCommunityIcons name="email-outline" size={20} color={palette.textMuted} style={styles.inputIcon} />
+          <MaterialCommunityIcons name="email-outline" size={20} color="#6B6B6B" style={styles.inputIcon} />
           <TextInput
             placeholder="Email"
-            placeholderTextColor={palette.textMuted}
+            placeholderTextColor="#6B6B6B"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -160,11 +118,12 @@ export default function Register({ navigation }: any) {
           />
         </View>
 
+        <Text style={styles.fieldLabel}>SENHA ( mínimo 6 caracteres )</Text>
         <View style={styles.inputContainer}>
-          <MaterialCommunityIcons name="lock-outline" size={20} color={palette.textMuted} style={styles.inputIcon} />
+          <MaterialCommunityIcons name="lock-outline" size={20} color="#6B6B6B" style={styles.inputIcon} />
           <TextInput
             placeholder="Senha"
-            placeholderTextColor={palette.textMuted}
+            placeholderTextColor="#6B6B6B"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -173,33 +132,22 @@ export default function Register({ navigation }: any) {
           />
           <Pressable
             onPress={() => setShowPassword((s) => !s)}
-            style={styles.infoButton}
+            style={styles.eyeButton}
             accessibilityLabel={showPassword ? "Ocultar senha" : "Mostrar senha"}
           >
             <MaterialCommunityIcons 
               name={showPassword ? "eye-off" : "eye"} 
               size={20} 
-              color={palette.textMuted} 
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => setShowPasswordHelper((s) => !s)}
-            style={styles.infoButton}
-            accessibilityLabel="Mostrar ajuda de senha"
-          >
-            <MaterialCommunityIcons 
-              name={showPasswordHelper ? "information" : "information-outline"} 
-              size={20} 
-              color={REGISTER_COLORS.primary} 
+              color="#6B6B6B" 
             />
           </Pressable>
         </View>
 
         <View style={styles.inputContainer}>
-          <MaterialCommunityIcons name="lock-check-outline" size={20} color={palette.textMuted} style={styles.inputIcon} />
+          <MaterialCommunityIcons name="lock-check-outline" size={20} color="#6B6B6B" style={styles.inputIcon} />
           <TextInput
             placeholder="Confirme sua senha"
-            placeholderTextColor={palette.textMuted}
+            placeholderTextColor="#6B6B6B"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirmPassword}
@@ -208,25 +156,16 @@ export default function Register({ navigation }: any) {
           />
           <Pressable
             onPress={() => setShowConfirmPassword((s) => !s)}
-            style={styles.infoButton}
+            style={styles.eyeButton}
             accessibilityLabel={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
           >
             <MaterialCommunityIcons 
               name={showConfirmPassword ? "eye-off" : "eye"} 
               size={20} 
-              color={palette.textMuted} 
+              color="#6B6B6B" 
             />
           </Pressable>
         </View>
-
-        {showPasswordHelper && (
-          <View style={styles.helperBox}>
-            <MaterialCommunityIcons name="shield-check" size={16} color={REGISTER_COLORS.primary} />
-            <Text style={styles.helperText}>
-              Mínimo 6 caracteres, com letra maiúscula e minúscula
-            </Text>
-          </View>
-        )}
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -249,61 +188,6 @@ export default function Register({ navigation }: any) {
           )}
         </Pressable>
 
-        <Pressable
-          onPress={handleGoogleRegister}
-          style={({ pressed }) => [
-            styles.googleButton,
-            pressed && styles.buttonPressed,
-            !request && styles.buttonDisabled,
-          ]}
-          disabled={!request || loading}
-        >
-          <View style={styles.buttonContent}>
-            <MaterialCommunityIcons name="google" size={20} color={palette.text} style={{ marginRight: 8 }} />
-            <Text style={styles.googleButtonText}>Continuar com Google</Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          onPress={() => { setShowResetForm(!showResetForm); if (!showResetForm) setResetEmail(email); }}
-          style={styles.linkContainer}
-        >
-          <Text style={styles.linkText}>{showResetForm ? "Fechar" : "Esqueceu sua senha?"}</Text>
-        </Pressable>
-
-        {showResetForm && (
-          <View style={styles.resetContainer}>
-            <View style={styles.inputContainer}>
-              <MaterialCommunityIcons name="email-outline" size={20} color={palette.textMuted} style={styles.inputIcon} />
-              <TextInput
-                placeholder="Digite seu e-mail"
-                placeholderTextColor={palette.textMuted}
-                value={resetEmail}
-                onChangeText={setResetEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={styles.input}
-              />
-            </View>
-            <Pressable
-              onPress={handleSendResetEmail}
-              style={({ pressed }) => [
-                styles.resetButton,
-                pressed && styles.buttonPressed,
-                resetLoading && styles.buttonDisabled
-              ]}
-              disabled={resetLoading}
-            >
-              {resetLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.resetButtonText}>Enviar link de recuperação</Text>
-              )}
-            </Pressable>
-            {resetResult && <Text style={styles.resultText}>{resetResult}</Text>}
-          </View>
-        )}
-
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>ou</Text>
@@ -318,115 +202,121 @@ export default function Register({ navigation }: any) {
 
         {/* Link para Termos de Uso */}
         <Pressable onPress={() => navigation.navigate("Termos de Uso")} style={styles.termsButton}>
-          <MaterialCommunityIcons name="file-document-outline" size={16} color={palette.textMuted} />
+          <MaterialCommunityIcons name="file-document-outline" size={16} color="#6B6B6B" />
           <Text style={styles.termsText}>Termos de Uso</Text>
         </Pressable>
       </View>
-      <CustomAlert {...alertState} onClose={hideAlert} />
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: REGISTER_COLORS.primary,
+    backgroundColor: '#0F9D8C',
   },
-  contentContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 40,
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   header: {
     alignItems: 'center',
-    paddingTop: 50,
+    paddingTop: 24,
     paddingBottom: 24,
   },
   iconContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: spacing.sm,
+    marginBottom: 8,
   },
   tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.95)',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
+    backgroundColor: '#F7F6F2',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 32,
     ...Platform.select({
       web: {
-        boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
+        maxWidth: 460,
+        alignSelf: 'center',
+        width: '100%',
       },
       default: {
-        elevation: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
+        elevation: 3,
       },
     }),
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '600',
-    color: palette.text,
+    color: '#2E2E2E',
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: palette.grayLight,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.md,
+    backgroundColor: '#EEF1F4',
+    borderRadius: 12,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.select({ ios: 2, default: 0 }),
   },
   inputIcon: {
-    marginRight: spacing.sm,
+    marginRight: 12,
   },
   input: {
     flex: 1,
     paddingVertical: 14,
     fontSize: 16,
-    color: palette.text,
+    color: '#2E2E2E',
   },
-  infoButton: {
-    padding: 4,
+  eyeButton: {
+    padding: 8,
+    marginLeft: 4,
   },
-  helperBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0fdfa',
-    borderRadius: borderRadius.sm,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B6B6B',
+    marginBottom: 6,
+    marginTop: 4,
+    letterSpacing: 0.5,
   },
-  helperText: {
-    color: REGISTER_COLORS.primaryDark,
-    fontSize: 12,
-    marginLeft: spacing.sm,
-    flex: 1,
+  error: {
+    color: '#dc2626',
+    marginBottom: 12,
+    textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 20,
   },
   primaryButton: {
-    backgroundColor: REGISTER_COLORS.primary,
+    backgroundColor: '#0F9D8C',
     paddingVertical: 14,
-    borderRadius: borderRadius.md,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.sm,
+    marginTop: 4,
   },
   buttonContent: {
     flexDirection: 'row',
@@ -438,101 +328,50 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-  googleButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingVertical: 12,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  googleButtonText: {
-    color: palette.text,
-    fontWeight: '600',
-    fontSize: 15,
-  },
   buttonPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
   },
   buttonDisabled: {
-    opacity: 0.6,
-  },
-  linkContainer: {
-    marginTop: spacing.md,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: REGISTER_COLORS.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  resetContainer: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
-  },
-  resetButton: {
-    backgroundColor: REGISTER_COLORS.primaryLight,
-    paddingVertical: 12,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  resultText: {
-    color: palette.textSecondary,
-    fontSize: 13,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-  },
-  error: {
-    color: palette.danger,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-    fontSize: 14,
+    opacity: 0.5,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    marginVertical: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: palette.border,
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   dividerText: {
-    paddingHorizontal: spacing.md,
-    color: palette.textMuted,
+    paddingHorizontal: 16,
+    color: '#6B6B6B',
     fontSize: 13,
   },
   loginButton: {
     alignItems: 'center',
+    paddingVertical: 4,
   },
   loginText: {
-    color: palette.textSecondary,
+    color: '#6B6B6B',
     fontSize: 14,
   },
   loginTextBold: {
-    color: REGISTER_COLORS.primary,
+    color: '#0F9D8C',
     fontWeight: '700',
   },
   termsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
+    gap: 8,
+    marginTop: 16,
+    paddingVertical: 8,
   },
   termsText: {
-    color: palette.textMuted,
+    color: '#6B6B6B',
     fontSize: 13,
   },
 });
