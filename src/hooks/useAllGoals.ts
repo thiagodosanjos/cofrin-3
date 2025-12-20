@@ -4,16 +4,16 @@ import { useTransactionRefresh } from '../contexts/transactionRefreshContext';
 import * as goalService from '../services/goalService';
 import { Goal } from '../types/firebase';
 
-export function useGoal() {
+export function useAllGoals() {
   const { user } = useAuth();
   const { refreshKey } = useTransactionRefresh();
-  const [goal, setGoal] = useState<Goal | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchGoal = async () => {
+  const fetchGoals = async () => {
     if (!user) {
-      setGoal(null);
+      setGoals([]);
       setLoading(false);
       return;
     }
@@ -21,34 +21,29 @@ export function useGoal() {
     try {
       setLoading(true);
       setError(null);
-      const primaryGoal = await goalService.getPrimaryGoal(user.uid);
-      setGoal(primaryGoal);
+      const activeGoals = await goalService.getActiveGoals(user.uid);
+      setGoals(activeGoals);
     } catch (err: any) {
-      console.error('Error fetching goal:', err);
-      setError(err.message || 'Erro ao carregar meta');
+      console.error('Error fetching goals:', err);
+      setError(err.message || 'Erro ao carregar metas');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchGoal();
+    fetchGoals();
   }, [user?.uid, refreshKey]);
 
   const refresh = () => {
-    fetchGoal();
+    fetchGoals();
   };
 
-  const progressPercentage = goal 
-    ? goalService.calculateGoalProgress(goal.currentAmount, goal.targetAmount)
-    : 0;
-
   return {
-    goal,
+    goals,
     loading,
     error,
     refresh,
-    progressPercentage,
-    hasGoal: !!goal,
+    hasGoals: goals.length > 0,
   };
 }

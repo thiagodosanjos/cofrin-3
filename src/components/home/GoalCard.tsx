@@ -9,11 +9,11 @@ interface Props {
   goal: Goal | null;
   progressPercentage: number;
   onCreatePress?: () => void;
-  onGoalPress?: () => void;
+  onManagePress?: () => void; // Navegar para tela de gerenciamento
   onAddPress?: () => void;
 }
 
-export default function GoalCard({ goal, progressPercentage, onCreatePress, onGoalPress, onAddPress }: Props) {
+export default function GoalCard({ goal, progressPercentage, onCreatePress, onManagePress, onAddPress }: Props) {
   const { colors } = useAppTheme();
 
   // Card quando NÃO há meta
@@ -47,13 +47,11 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onGo
   }
 
   return (
-    <Pressable
-      onPress={onGoalPress}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.card,
         { backgroundColor: '#fff' },
         getShadow(colors),
-        pressed && { opacity: 0.95 }
       ]}
     >
       <View style={styles.header}>
@@ -90,21 +88,32 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onGo
         </Text>
       </View>
 
-      {/* Botão adicionar */}
-      <Pressable
-        onPress={(e) => {
-          e.stopPropagation();
-          onAddPress?.();
-        }}
-        style={({ pressed }) => [
-          styles.addButton,
-          { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' },
-          pressed && { opacity: 0.7 }
-        ]}
-      >
-        <Text style={[styles.addButtonText, { color: '#6B7280' }]}>Adicionar progresso</Text>
-      </Pressable>
-    </Pressable>
+      {/* Botões de ação */}
+      <View style={styles.actionsRow}>
+        <Pressable
+          onPress={onAddPress}
+          style={({ pressed }) => [
+            styles.addButton,
+            { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' },
+            pressed && { opacity: 0.7 }
+          ]}
+        >
+          <Text style={[styles.addButtonText, { color: '#6B7280' }]}>Adicionar progresso</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={onManagePress}
+          style={({ pressed }) => [
+            styles.manageButton,
+            { backgroundColor: '#3B82F6' },
+            pressed && { opacity: 0.85 }
+          ]}
+        >
+          <MaterialCommunityIcons name="view-list" size={16} color="#fff" />
+          <Text style={styles.manageButtonText}>Acompanhar minhas metas</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -188,6 +197,9 @@ const styles = StyleSheet.create({
     width: 40,
     textAlign: 'right',
   },
+  actionsRow: {
+    gap: 8,
+  },
   addButton: {
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -197,6 +209,20 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     fontSize: 13,
+    fontWeight: '600',
+  },
+  manageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  manageButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

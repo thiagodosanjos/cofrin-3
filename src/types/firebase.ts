@@ -202,6 +202,7 @@ export interface Goal extends BaseDocument {
   timeframe: GoalTimeframe;
   targetDate?: Timestamp; // Data de finalização da meta
   isActive: boolean;
+  isPrimary?: boolean; // Meta principal que aparece na Home
   completedAt?: Timestamp;
   icon?: string;
   color?: string;

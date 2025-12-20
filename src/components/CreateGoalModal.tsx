@@ -29,9 +29,25 @@ interface Props {
   onDelete?: (confirmed: boolean) => Promise<void>;
   existingGoal?: Goal | null;
   progressPercentage?: number;
+  showSetPrimaryOption?: boolean; // Mostrar opção para definir como principal
+  onSaveAsPrimary?: (data: {
+    name: string;
+    targetAmount: number;
+    targetDate: Date;
+    icon: string;
+  }) => Promise<void>; // Callback para salvar como principal
 }
 
-export default function CreateGoalModal({ visible, onClose, onSave, onDelete, existingGoal, progressPercentage = 0 }: Props) {
+export default function CreateGoalModal({ 
+  visible, 
+  onClose, 
+  onSave, 
+  onDelete, 
+  existingGoal, 
+  progressPercentage = 0,
+  showSetPrimaryOption = false,
+  onSaveAsPrimary
+}: Props) {
   const { colors } = useAppTheme();
   
   const [name, setName] = useState('');

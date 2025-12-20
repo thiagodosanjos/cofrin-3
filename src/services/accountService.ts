@@ -20,7 +20,6 @@ import {
     CreateAccountInput,
     UpdateAccountInput,
 } from '../types/firebase';
-import { deleteTransactionsByAccount } from './transactionService';
 
 const accountsRef = collection(db, COLLECTIONS.ACCOUNTS);
 
@@ -154,6 +153,8 @@ export async function unarchiveAccount(accountId: string): Promise<void> {
 export async function deleteAccount(accountId: string, userId?: string): Promise<void> {
   // Se houver userId, deletar também os lançamentos associados à conta (inclui transferências)
   if (userId) {
+    // Import dinâmico para evitar ciclo de dependência
+    const { deleteTransactionsByAccount } = await import('./transactionService');
     await deleteTransactionsByAccount(userId, accountId);
   }
   const docRef = doc(db, COLLECTIONS.ACCOUNTS, accountId);

@@ -98,7 +98,7 @@ export default function Home() {
         timeframe,
         icon: data.icon,
         isActive: true,
-      });
+      }, true); // Definir como principal (primeira meta)
     }
     refreshGoal();
   };
@@ -246,7 +246,7 @@ export default function Home() {
               goal={goal}
               progressPercentage={progressPercentage}
               onCreatePress={() => setShowGoalModal(true)}
-              onGoalPress={() => setShowGoalModal(true)}
+              onManagePress={() => navigation.navigate('ManageGoals')}
               onAddPress={() => setShowAddToGoalModal(true)}
             />
 

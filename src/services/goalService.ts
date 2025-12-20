@@ -12,9 +12,7 @@ import {
     getDoc,
     query,
     where,
-    Timestamp,
-    orderBy,
-    limit,
+    Timestamp, limit
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from './firebase';
 import {
@@ -28,10 +26,13 @@ const goalsRef = collection(db, COLLECTIONS.GOALS);
 // Criar meta
 export async function createGoal(
   userId: string,
-  data: CreateGoalInput
+  data: CreateGoalInput,
+  setAsPrimary: boolean = false
 ): Promise<Goal> {
-  // Desativar meta atual se existir
-  await deactivateCurrentGoal(userId);
+  // Se deve ser definida como principal, desmarcar outras como principais
+  if (setAsPrimary) {
+    await unsetAllPrimaryGoals(userId);
+  }
 
   const now = Timestamp.now();
   const inputData = data as any;
@@ -43,6 +44,7 @@ export async function createGoal(
     currentAmount: inputData.currentAmount ?? 0,
     timeframe: data.timeframe,
     isActive: data.isActive,
+    isPrimary: setAsPrimary,
     userId,
     createdAt: now,
     updatedAt: now,
@@ -63,6 +65,7 @@ export async function createGoal(
     currentAmount: inputData.currentAmount ?? 0,
     timeframe: data.timeframe,
     isActive: true,
+    isPrimary: setAsPrimary,
     icon: data.icon,
     color: data.color,
     createdAt: now,
@@ -72,7 +75,7 @@ export async function createGoal(
   return createdGoal;
 }
 
-// Buscar meta ativa do usuário
+// Buscar meta ativa do usuário (DEPRECATED - usar getPrimaryGoal)
 export async function getActiveGoal(userId: string): Promise<Goal | null> {
   const q = query(
     goalsRef,
@@ -92,19 +95,60 @@ export async function getActiveGoal(userId: string): Promise<Goal | null> {
   } as Goal;
 }
 
+// Buscar meta principal do usuário (para exibir na Home)
+export async function getPrimaryGoal(userId: string): Promise<Goal | null> {
+  const q = query(
+    goalsRef,
+    where('userId', '==', userId),
+    where('isActive', '==', true),
+    where('isPrimary', '==', true),
+    limit(1)
+  );
+
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) return null;
+
+  const doc = snapshot.docs[0];
+  return {
+    id: doc.id,
+    ...doc.data(),
+  } as Goal;
+}
+
+// Buscar todas as metas ativas do usuário
+export async function getActiveGoals(userId: string): Promise<Goal[]> {
+  const q = query(
+    goalsRef,
+    where('userId', '==', userId),
+    where('isActive', '==', true)
+  );
+
+  const snapshot = await getDocs(q);
+  const goals = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Goal[];
+  
+  // Ordenar no cliente para evitar necessidade de índice composto
+  return goals.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+}
+
 // Buscar todas as metas do usuário (histórico)
 export async function getAllGoals(userId: string): Promise<Goal[]> {
   const q = query(
     goalsRef,
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', userId)
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
+  const goals = snapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data(),
   })) as Goal[];
+  
+  // Ordenar no cliente para evitar necessidade de índice composto
+  return goals.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 }
 
 // Buscar metas concluídas do usuário
@@ -215,6 +259,53 @@ async function deactivateCurrentGoal(userId: string): Promise<void> {
   }
 }
 
+// Desmarcar todas as metas como principais
+async function unsetAllPrimaryGoals(userId: string): Promise<void> {
+  const activeGoals = await getActiveGoals(userId);
+  const primaryGoals = activeGoals.filter(g => g.isPrimary);
+  
+  for (const goal of primaryGoals) {
+    const docRef = doc(db, COLLECTIONS.GOALS, goal.id);
+    await updateDoc(docRef, {
+      isPrimary: false,
+      updatedAt: Timestamp.now(),
+    });
+  }
+}
+
+// Garantir que sempre haja uma meta principal se houver apenas uma meta ativa
+async function ensurePrimaryGoalExists(userId: string): Promise<void> {
+  const activeGoals = await getActiveGoals(userId);
+  
+  // Se houver apenas uma meta ativa, ela deve ser principal
+  if (activeGoals.length === 1 && !activeGoals[0].isPrimary) {
+    const docRef = doc(db, COLLECTIONS.GOALS, activeGoals[0].id);
+    await updateDoc(docRef, {
+      isPrimary: true,
+      updatedAt: Timestamp.now(),
+    });
+  }
+}
+
+// Definir uma meta como principal
+export async function setPrimaryGoal(goalId: string, userId: string): Promise<void> {
+  // Desmarcar todas as outras como principais
+  await unsetAllPrimaryGoals(userId);
+  
+  // Marcar esta como principal
+  const docRef = doc(db, COLLECTIONS.GOALS, goalId);
+  await updateDoc(docRef, {
+    isPrimary: true,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// Verificar se pode desmarcar como principal (não permitir se for a única meta)
+export async function canUnsetPrimary(userId: string): Promise<boolean> {
+  const activeGoals = await getActiveGoals(userId);
+  return activeGoals.length > 1;
+}
+
 // Desativar meta manualmente
 export async function deactivateGoal(goalId: string): Promise<void> {
   const docRef = doc(db, COLLECTIONS.GOALS, goalId);
@@ -245,6 +336,9 @@ export async function deleteGoal(goalId: string, userId: string): Promise<void> 
   // Deletar a meta
   const docRef = doc(db, COLLECTIONS.GOALS, goalId);
   await deleteDoc(docRef);
+  
+  // Se sobrar apenas 1 meta ativa, torná-la principal automaticamente
+  await ensurePrimaryGoalExists(userId);
 }
 
 // Calcular percentual de progresso
