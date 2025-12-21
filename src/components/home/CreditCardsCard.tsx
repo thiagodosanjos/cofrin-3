@@ -1,6 +1,7 @@
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, Modal } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useState, useMemo } from 'react';
 import { useAppTheme } from '../../contexts/themeContext';
 import { getShadow } from '../../theme';
 import { formatCurrencyBRL } from '../../utils/format';
@@ -9,6 +10,7 @@ import { CreditCard } from '../../types/firebase';
 interface Props {
   cards?: CreditCard[];
   totalBills?: number;
+  totalIncome?: number; // Receita do mês para calcular porcentagem
   onCardPress?: (card: CreditCard) => void;
   onAddPress?: () => void;
 }
@@ -34,8 +36,69 @@ const primaryDark = '#4A2FA8';
 // Fundo mais claro para visual moderno
 const lightBg = '#FAFAFA';
 
-export default function CreditCardsCard({ cards = [], totalBills = 0, onCardPress, onAddPress }: Props) {
+// Status de uso do cartão baseado na porcentagem de gastos vs receitas
+type CardUsageStatus = {
+  level: 'controlled' | 'warning' | 'alert';
+  message: string;
+  icon: 'check-circle' | 'alert-circle' | 'alert';
+  color: string;
+};
+
+const getCardUsageStatus = (totalUsed: number, totalIncome: number, colors: any): CardUsageStatus => {
+  if (totalIncome === 0) {
+    return {
+      level: 'controlled',
+      message: 'Sem receitas registradas neste mês',
+      icon: 'check-circle',
+      color: colors.textMuted,
+    };
+  }
+
+  const percentage = (totalUsed / totalIncome) * 100;
+
+  if (percentage <= 30) {
+    return {
+      level: 'controlled',
+      message: 'Gastos controlados',
+      icon: 'check-circle',
+      color: '#22C55E', // verde
+    };
+  } else if (percentage <= 50) {
+    return {
+      level: 'warning',
+      message: 'Cuidado, você está se aproximando do limite recomendado',
+      icon: 'alert-circle',
+      color: '#F59E0B', // amarelo/laranja
+    };
+  } else {
+    return {
+      level: 'alert',
+      message: 'Atenção, gastos elevados no cartão',
+      icon: 'alert',
+      color: '#EF4444', // vermelho
+    };
+  }
+};
+
+export default function CreditCardsCard({ cards = [], totalBills = 0, totalIncome = 0, onCardPress, onAddPress }: Props) {
   const { colors } = useAppTheme();
+  const [showStatusModal, setShowStatusModal] = useState(false);
+
+  // Calcular total usado em todos os cartões
+  const totalUsed = useMemo(() => {
+    return cards.reduce((sum, card) => sum + (card.currentUsed || 0), 0);
+  }, [cards]);
+
+  // Status do uso dos cartões
+  const usageStatus = useMemo(() => {
+    return getCardUsageStatus(totalUsed, totalIncome, colors);
+  }, [totalUsed, totalIncome, colors]);
+
+  // Porcentagem de uso
+  const usagePercentage = useMemo(() => {
+    if (totalIncome === 0) return 0;
+    return (totalUsed / totalIncome) * 100;
+  }, [totalUsed, totalIncome]);
 
   // Componente de item do cartão (compacto e moderno)
   const CardItem = ({ card }: { card: CreditCard }) => {
@@ -116,9 +179,26 @@ export default function CreditCardsCard({ cards = [], totalBills = 0, onCardPres
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: primaryDark }]}>
-            Meus cartões
-          </Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: primaryDark }]}>
+              Meus cartões
+            </Text>
+            {cards.length > 0 && totalUsed > 0 && (
+              <Pressable 
+                onPress={() => setShowStatusModal(true)}
+                style={({ pressed }) => [
+                  styles.statusIconButton,
+                  { opacity: pressed ? 0.7 : 1 }
+                ]}
+              >
+                <MaterialCommunityIcons 
+                  name={usageStatus.icon} 
+                  size={22} 
+                  color={usageStatus.color} 
+                />
+              </Pressable>
+            )}
+          </View>
           {cards.length > 0 && (
             <Text style={[styles.subtitle, { color: colors.textMuted }]}>
               {cards.length} cartão{cards.length > 1 ? 'es' : ''} cadastrado{cards.length > 1 ? 's' : ''}
@@ -143,6 +223,108 @@ export default function CreditCardsCard({ cards = [], totalBills = 0, onCardPres
           </Text>
         </View>
       )}
+
+      {/* Modal de Status de Uso dos Cartões */}
+      <Modal
+        visible={showStatusModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStatusModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowStatusModal(false)}
+        >
+          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+            {/* Ícone e status principal */}
+            <View style={styles.modalHeader}>
+              <View style={[styles.modalIconContainer, { backgroundColor: `${usageStatus.color}15` }]}>
+                <MaterialCommunityIcons 
+                  name={usageStatus.icon} 
+                  size={32} 
+                  color={usageStatus.color} 
+                />
+              </View>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {usageStatus.message}
+              </Text>
+            </View>
+
+            <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+            {/* Resumo dos compromissos */}
+            <View style={styles.modalDetails}>
+              <View style={styles.modalRow}>
+                <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Total em faturas:</Text>
+                <Text style={[styles.modalValue, { color: colors.expense }]}>
+                  {formatCurrencyBRL(totalUsed)}
+                </Text>
+              </View>
+              <View style={styles.modalRow}>
+                <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Receitas do mês:</Text>
+                <Text style={[styles.modalValue, { color: colors.income }]}>
+                  {formatCurrencyBRL(totalIncome)}
+                </Text>
+              </View>
+              <View style={styles.modalRow}>
+                <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Comprometimento:</Text>
+                <Text style={[styles.modalValue, { color: usageStatus.color }]}>
+                  {usagePercentage.toFixed(1)}%
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+            {/* Detalhes por cartão */}
+            <View style={styles.modalCardsList}>
+              <Text style={[styles.modalSectionTitle, { color: colors.text }]}>
+                Por cartão
+              </Text>
+              {cards.filter(c => (c.currentUsed || 0) > 0).map((card) => (
+                <View key={card.id} style={styles.modalCardItem}>
+                  <View style={styles.modalCardInfo}>
+                    <View style={[styles.modalCardIcon, { backgroundColor: `${getCardColor(card.name, card.color)}15` }]}>
+                      <MaterialCommunityIcons 
+                        name={(card.icon as any) || 'credit-card'} 
+                        size={16} 
+                        color={getCardColor(card.name, card.color)} 
+                      />
+                    </View>
+                    <Text style={[styles.modalCardName, { color: colors.text }]} numberOfLines={1}>
+                      {card.name}
+                    </Text>
+                  </View>
+                  <Text style={[styles.modalCardValue, { color: colors.expense }]}>
+                    {formatCurrencyBRL(card.currentUsed || 0)}
+                  </Text>
+                </View>
+              ))}
+              {cards.filter(c => (c.currentUsed || 0) > 0).length === 0 && (
+                <Text style={[styles.modalEmptyText, { color: colors.textMuted }]}>
+                  Nenhuma fatura em aberto
+                </Text>
+              )}
+            </View>
+
+            {/* Dica */}
+            <View style={[styles.modalTip, { backgroundColor: `${usageStatus.color}10` }]}>
+              <MaterialCommunityIcons 
+                name="lightbulb-outline" 
+                size={16} 
+                color={usageStatus.color} 
+              />
+              <Text style={[styles.modalTipText, { color: colors.textMuted }]}>
+                {usageStatus.level === 'controlled' 
+                  ? 'Continue assim! Manter os gastos no cartão abaixo de 30% das receitas é ideal.'
+                  : usageStatus.level === 'warning'
+                  ? 'Considere revisar seus gastos. O ideal é manter abaixo de 30% das receitas.'
+                  : 'Revise seus gastos no cartão para evitar comprometer seu orçamento.'}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -233,5 +415,120 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
+  },
+  // Estilos do ícone de status
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusIconButton: {
+    padding: 4,
+  },
+  // Estilos da modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  modalIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  modalDivider: {
+    height: 1,
+    marginVertical: 16,
+  },
+  modalDetails: {
+    gap: 12,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalLabel: {
+    fontSize: 14,
+  },
+  modalValue: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalCardsList: {
+    gap: 10,
+  },
+  modalSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  modalCardItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalCardInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  modalCardIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCardName: {
+    fontSize: 14,
+    flex: 1,
+  },
+  modalCardValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalEmptyText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  modalTip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  modalTipText: {
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 18,
   },
 });

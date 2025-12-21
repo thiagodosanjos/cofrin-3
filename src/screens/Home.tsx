@@ -227,6 +227,7 @@ export default function Home() {
             {/* 3. Meus cartões de crédito */}
             <CreditCardsCard 
               cards={activeCards}
+              totalIncome={totalIncome}
               onCardPress={handleCreditCardPress}
               onAddPress={handleAddCreditCard}
             />
