@@ -121,7 +121,7 @@ export function useCreditCards(includeArchived: boolean = false) {
     try {
       // Ao excluir o cartão, excluir também todos os lançamentos vinculados a ele
       await deleteTransactionsByCreditCard(user.uid, cardId);
-      await creditCardService.deleteCreditCard(cardId);
+      await creditCardService.deleteCreditCard(cardId, user.uid);
       setCreditCards(prev => prev.filter(card => card.id !== cardId));
       return true;
     } catch (err) {

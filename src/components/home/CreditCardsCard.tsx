@@ -154,8 +154,14 @@ export default function CreditCardsCard({ cards = [], totalBills = 0, totalIncom
             )}
           </View>
 
-          {/* Vencimento + Valor da fatura */}
+          {/* Fechamento + Vencimento + Valor da fatura */}
           <View style={styles.infoRow}>
+            <View style={styles.infoItem}>
+              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Fechamento</Text>
+              <Text style={[styles.infoValue, { color: colors.text }]}>
+                Dia {card.closingDay}
+              </Text>
+            </View>
             <View style={styles.infoItem}>
               <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Vencimento</Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
@@ -163,7 +169,7 @@ export default function CreditCardsCard({ cards = [], totalBills = 0, totalIncom
               </Text>
             </View>
             <View style={styles.infoItem}>
-              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Valor da fatura</Text>
+              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Fatura</Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
                 {formatCurrencyBRL(used)}
               </Text>

@@ -3,29 +3,29 @@
 // ==========================================
 
 import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  getDocs,
-  getDoc,
-  query,
-  where, Timestamp
+    collection,
+    doc,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    getDocs,
+    getDoc,
+    query,
+    where, Timestamp
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from './firebase';
 import {
-  Transaction,
-  CreateTransactionInput,
-  UpdateTransactionInput,
-  TransactionType,
+    Transaction,
+    CreateTransactionInput,
+    UpdateTransactionInput,
+    TransactionType,
 } from '../types/firebase';
 import { updateAccountBalance, getAccounts } from './accountService';
 import { getCategoryById } from './categoryService';
 import { getAccountById } from './accountService';
 import { getCreditCardById, updateCreditCardUsage, recalculateCreditCardUsage } from './creditCardService';
 import { addToGoalProgress, removeFromGoalProgress } from './goalService';
-import { getPendingBillsMap } from './creditCardBillService';
+import { getPendingBillsMap, getCorrectBillForTransaction } from './creditCardBillService';
 
 const transactionsRef = collection(db, COLLECTIONS.TRANSACTIONS);
 
@@ -39,8 +39,10 @@ export async function createTransaction(
 ): Promise<Transaction> {
   const now = Timestamp.now();
   const transactionDate = data.date.toDate();
-  const month = transactionDate.getMonth() + 1;
-  const year = transactionDate.getFullYear();
+  
+  // Calcular mês e ano - para cartão de crédito, considerar o dia de fechamento
+  let month = transactionDate.getMonth() + 1;
+  let year = transactionDate.getFullYear();
 
   // Buscar dados desnormalizados
   let categoryName: string | undefined;
@@ -58,11 +60,20 @@ export async function createTransaction(
     }
   }
 
-  // Cartão de crédito
+  // Cartão de crédito - calcular mês/ano correto da fatura considerando fechamento e fatura paga
   if (data.creditCardId) {
     const card = await getCreditCardById(data.creditCardId);
     if (card) {
       creditCardName = card.name;
+      // Usar validação completa que verifica fechamento e se a fatura está paga
+      const billInfo = await getCorrectBillForTransaction(
+        userId,
+        data.creditCardId,
+        transactionDate,
+        card.closingDay
+      );
+      month = billInfo.month;
+      year = billInfo.year;
     }
   }
 
@@ -577,8 +588,28 @@ export async function updateTransaction(
     // Atualizar mês/ano se a data mudou
     if (data.date) {
       const transactionDate = data.date.toDate();
-      updateData.month = transactionDate.getMonth() + 1;
-      updateData.year = transactionDate.getFullYear();
+      
+      // Para cartão de crédito, usar a validação de fatura correta
+      const effectiveCreditCardId = data.creditCardId !== undefined ? data.creditCardId : oldCreditCardId;
+      if (effectiveCreditCardId) {
+        const card = await getCreditCardById(effectiveCreditCardId);
+        if (card) {
+          const billInfo = await getCorrectBillForTransaction(
+            oldTransaction.userId,
+            effectiveCreditCardId,
+            transactionDate,
+            card.closingDay
+          );
+          updateData.month = billInfo.month;
+          updateData.year = billInfo.year;
+        } else {
+          updateData.month = transactionDate.getMonth() + 1;
+          updateData.year = transactionDate.getFullYear();
+        }
+      } else {
+        updateData.month = transactionDate.getMonth() + 1;
+        updateData.year = transactionDate.getFullYear();
+      }
     }
 
     // Se está removendo o cartão explicitamente (mudando para conta)
@@ -713,6 +744,93 @@ export async function deleteTransactionSeries(
   }
 
   return deletedCount;
+}
+
+// ==========================================
+// MOVER SÉRIE DE TRANSAÇÕES PARCELADAS
+// ==========================================
+
+/**
+ * Move toda a série de transações parceladas para a próxima fatura
+ * Usado quando a fatura original já foi paga
+ */
+export async function moveTransactionSeriesToNextBill(
+  userId: string,
+  seriesId: string,
+  creditCardId: string
+): Promise<{ movedCount: number; newMonth: number; newYear: number }> {
+  const transactions = await getTransactionsBySeries(userId, seriesId);
+  
+  if (transactions.length === 0) {
+    throw new Error('Nenhuma transação encontrada na série');
+  }
+
+  // Verificar se todas são do mesmo cartão
+  const allSameCard = transactions.every(t => t.creditCardId === creditCardId);
+  if (!allSameCard) {
+    throw new Error('Transações da série pertencem a cartões diferentes');
+  }
+
+  // Buscar o cartão para obter dia de fechamento
+  const card = await getCreditCardById(creditCardId);
+  if (!card) {
+    throw new Error('Cartão não encontrado');
+  }
+
+  // Pegar a primeira transação para calcular a nova fatura
+  const firstTransaction = transactions[0];
+  const originalMonth = firstTransaction.month;
+  const originalYear = firstTransaction.year;
+
+  // Calcular próxima fatura
+  let newMonth = originalMonth + 1;
+  let newYear = originalYear;
+  if (newMonth > 12) {
+    newMonth = 1;
+    newYear += 1;
+  }
+
+  // Verificar se a próxima fatura também está paga
+  const { isBillPaid } = await import('./creditCardBillService');
+  const nextBillPaid = await isBillPaid(userId, creditCardId, newMonth, newYear);
+  if (nextBillPaid) {
+    // Se a próxima também está paga, avançar mais um mês
+    newMonth += 1;
+    if (newMonth > 12) {
+      newMonth = 1;
+      newYear += 1;
+    }
+  }
+
+  // Atualizar todas as transações da série
+  let movedCount = 0;
+  for (const transaction of transactions) {
+    try {
+      const docRef = doc(db, COLLECTIONS.TRANSACTIONS, transaction.id);
+      
+      // Calcular nova data mantendo o dia relativo
+      const oldDate = transaction.date.toDate();
+      const dayOfMonth = oldDate.getDate();
+      const monthDiff = (newMonth - originalMonth) + (newYear - originalYear) * 12;
+      const newDate = new Date(oldDate);
+      newDate.setMonth(newDate.getMonth() + monthDiff);
+      
+      await updateDoc(docRef, {
+        month: newMonth + (transactions.indexOf(transaction)), // Cada parcela em seu mês
+        year: newYear + Math.floor((newMonth + transactions.indexOf(transaction) - 1) / 12),
+        updatedAt: Timestamp.now(),
+      });
+      
+      movedCount++;
+    } catch (error) {
+      console.error(`Erro ao mover transação ${transaction.id}:`, error);
+    }
+  }
+
+  // Recalcular uso do cartão
+  await recalculateCreditCardUsage(userId, creditCardId);
+
+  return { movedCount, newMonth, newYear };
 }
 
 // ==========================================
@@ -1407,6 +1525,43 @@ export async function countTransactionsByAccount(
 
   const snapshot = await getDocs(q);
   return snapshot.size;
+}
+
+// ==========================================
+// ATUALIZAR NOMES DESNORMALIZADOS
+// ==========================================
+
+/**
+ * Atualiza o nome do cartão de crédito em todas as transações associadas
+ * Usado quando o usuário renomeia um cartão
+ */
+export async function updateCreditCardNameInTransactions(
+  userId: string,
+  creditCardId: string,
+  newName: string
+): Promise<number> {
+  const q = query(
+    transactionsRef,
+    where('userId', '==', userId),
+    where('creditCardId', '==', creditCardId)
+  );
+
+  const snapshot = await getDocs(q);
+  let updatedCount = 0;
+
+  for (const docSnapshot of snapshot.docs) {
+    try {
+      await updateDoc(doc(db, COLLECTIONS.TRANSACTIONS, docSnapshot.id), {
+        creditCardName: newName,
+        updatedAt: Timestamp.now(),
+      });
+      updatedCount++;
+    } catch (error) {
+      console.error(`Erro ao atualizar transação ${docSnapshot.id}:`, error);
+    }
+  }
+
+  return updatedCount;
 }
 
 // ==========================================

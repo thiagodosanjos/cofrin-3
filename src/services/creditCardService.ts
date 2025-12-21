@@ -105,6 +105,25 @@ export async function updateCreditCard(
   data: UpdateCreditCardInput
 ): Promise<void> {
   const docRef = doc(db, COLLECTIONS.CREDIT_CARDS, cardId);
+  
+  // Se o nome foi alterado, atualizar nas transações e faturas também
+  if (data.name) {
+    // Buscar o cartão para obter o userId
+    const cardSnapshot = await getDoc(docRef);
+    if (cardSnapshot.exists()) {
+      const cardData = cardSnapshot.data();
+      // Importar dinamicamente para evitar dependência circular
+      const { updateCreditCardNameInTransactions } = await import('./transactionService');
+      const { updateCreditCardNameInBills } = await import('./creditCardBillService');
+      
+      // Atualizar nome nas transações e faturas em paralelo
+      await Promise.all([
+        updateCreditCardNameInTransactions(cardData.userId, cardId, data.name),
+        updateCreditCardNameInBills(cardData.userId, cardId, data.name),
+      ]);
+    }
+  }
+  
   await updateDoc(docRef, {
     ...data,
     updatedAt: Timestamp.now(),
@@ -129,29 +148,29 @@ export async function unarchiveCreditCard(cardId: string): Promise<void> {
   });
 }
 
-// Deletar cartão
-export async function deleteCreditCard(cardId: string): Promise<number> {
-  // Buscar todas as transações associadas ao cartão
-  const transactionsRef = collection(db, COLLECTIONS.TRANSACTIONS);
-  const q = query(
-    transactionsRef,
-    where('creditCardId', '==', cardId)
-  );
-  
-  const snapshot = await getDocs(q);
-  const transactionsCount = snapshot.docs.length;
-  
-  // Deletar todas as transações do cartão
-  const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-  await Promise.all(deletePromises);
-  
-  console.log(`🗑️ ${transactionsCount} transações deletadas junto com o cartão`);
+// Deletar cartão (apenas o cartão e faturas - transações devem ser deletadas pelo hook com userId)
+export async function deleteCreditCard(cardId: string, userId?: string): Promise<number> {
+  // Se userId foi passado, deletar faturas associadas ao cartão
+  if (userId) {
+    const billsRef = collection(db, COLLECTIONS.CREDIT_CARD_BILLS);
+    const billsQuery = query(
+      billsRef,
+      where('userId', '==', userId),
+      where('creditCardId', '==', cardId)
+    );
+    
+    const billsSnapshot = await getDocs(billsQuery);
+    const deleteBillPromises = billsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deleteBillPromises);
+    
+    console.log(`🗑️ ${billsSnapshot.docs.length} faturas deletadas junto com o cartão`);
+  }
   
   // Deletar o cartão
   const docRef = doc(db, COLLECTIONS.CREDIT_CARDS, cardId);
   await deleteDoc(docRef);
   
-  return transactionsCount;
+  return 0;
 }
 
 // Atualizar uso do cartão (adicionar ou remover valor)

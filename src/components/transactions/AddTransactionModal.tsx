@@ -25,6 +25,8 @@ import { useCustomAlert } from '../../hooks/useCustomAlert';
 import CustomAlert from '../CustomAlert';
 import { TransactionType, RecurrenceType, CreateTransactionInput } from '../../types/firebase';
 import { useTransactionRefresh } from '../../contexts/transactionRefreshContext';
+import { validateBillForTransaction } from '../../services/creditCardBillService';
+import { useAuth } from '../../contexts/authContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -128,6 +130,7 @@ export default function AddTransactionModal({
 }: Props) {
   const { colors } = useAppTheme();
   const { refreshKey } = useTransactionRefresh();
+  const { user } = useAuth();
 
   // Firebase hooks
   const { categories, refresh: refreshCategories } = useCategories();
@@ -428,6 +431,29 @@ export default function AddTransactionModal({
       return;
     }
 
+    // Validar fatura de cartão de crédito - verificar se está paga
+    if (useCreditCard && creditCardId && user?.uid) {
+      const card = activeCards.find(c => c.id === creditCardId);
+      if (card) {
+        const validation = await validateBillForTransaction(
+          user.uid,
+          creditCardId,
+          date,
+          card.closingDay
+        );
+        
+        if (validation.isPaid && validation.message) {
+          // Mostrar aviso que será redirecionado para próxima fatura
+          showAlert(
+            'Fatura Paga',
+            validation.message,
+            [{ text: 'OK, entendi', style: 'default' }]
+          );
+          // Continua salvando pois o serviço vai redirecionar automaticamente
+        }
+      }
+    }
+
     setSaving(true);
     try {
       // Map local type to Firebase type
@@ -617,7 +643,7 @@ export default function AddTransactionModal({
     type, amount, description, categoryId, categoryName,
     accountId, toAccountId, creditCardId, useCreditCard,
     date, recurrence, repetitions, createTransaction, updateTransaction, 
-    isEditMode, editTransaction, onSave, onClose, activeAccounts
+    isEditMode, editTransaction, onSave, onClose, activeAccounts, activeCards, user
   ]);
 
   // Componente de campo selecionável

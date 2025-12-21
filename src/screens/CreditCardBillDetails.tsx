@@ -11,7 +11,7 @@ import { useTransactionRefresh } from '../contexts/transactionRefreshContext';
 import { useAccounts } from '../hooks/useAccounts';
 import AddTransactionModal, { EditableTransaction } from '../components/transactions/AddTransactionModal';
 import TransactionItem from '../components/transactions/TransactionItem';
-import AppHeader from '../components/AppHeader';
+import SimpleHeader from '../components/SimpleHeader';
 import MainLayout from '../components/MainLayout';
 import { spacing, borderRadius, getShadow } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
@@ -269,11 +269,7 @@ export default function CreditCardBillDetails() {
 
   return (
     <MainLayout>
-      <AppHeader 
-        title={params.creditCardName}
-        showBackButton
-        onBack={() => navigation.goBack()}
-      />
+      <SimpleHeader title={`Fatura ${params.creditCardName}`} />
       
       <ScrollView
         style={[styles.container, { backgroundColor: colors.bg }]}

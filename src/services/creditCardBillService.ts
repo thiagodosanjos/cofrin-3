@@ -6,7 +6,7 @@ import { collection, doc, addDoc, updateDoc, getDocs, getDoc, query, where, Time
 import { db, COLLECTIONS } from './firebase';
 import { CreditCardBill, Transaction, CreditCard } from '../types/firebase';
 import { updateAccountBalance, getAccountById } from './accountService';
-import { getCreditCardById, updateCreditCard } from './creditCardService';
+import { getCreditCardById, updateCreditCard, getBillMonth } from './creditCardService';
 
 const billsRef = collection(db, COLLECTIONS.CREDIT_CARD_BILLS);
 const transactionsRef = collection(db, COLLECTIONS.TRANSACTIONS);
@@ -434,6 +434,43 @@ export async function getPendingBillsMap(
 }
 
 // ==========================================
+// ATUALIZAR NOME DO CARTÃO NAS FATURAS
+// ==========================================
+
+/**
+ * Atualiza o nome do cartão de crédito em todas as faturas associadas
+ * Usado quando o usuário renomeia um cartão
+ */
+export async function updateCreditCardNameInBills(
+  userId: string,
+  creditCardId: string,
+  newName: string
+): Promise<number> {
+  const q = query(
+    billsRef,
+    where('userId', '==', userId),
+    where('creditCardId', '==', creditCardId)
+  );
+
+  const snapshot = await getDocs(q);
+  let updatedCount = 0;
+
+  for (const docSnapshot of snapshot.docs) {
+    try {
+      await updateDoc(doc(db, COLLECTIONS.CREDIT_CARD_BILLS, docSnapshot.id), {
+        creditCardName: newName,
+        updatedAt: Timestamp.now(),
+      });
+      updatedCount++;
+    } catch (error) {
+      console.error(`Erro ao atualizar fatura ${docSnapshot.id}:`, error);
+    }
+  }
+
+  return updatedCount;
+}
+
+// ==========================================
 // OBTER NOME DO MÊS
 // ==========================================
 
@@ -443,4 +480,107 @@ export function getMonthName(month: number): string {
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
   return months[month - 1] || '';
+}
+
+// ==========================================
+// VALIDAÇÃO DE FATURA PARA NOVA TRANSAÇÃO
+// ==========================================
+
+export interface BillValidationResult {
+  canAdd: boolean;
+  billMonth: number;
+  billYear: number;
+  isPaid: boolean;
+  isClosed: boolean;
+  message?: string;
+  suggestedMonth?: number;
+  suggestedYear?: number;
+}
+
+/**
+ * Valida se uma transação pode ser adicionada a uma fatura de cartão de crédito
+ * Retorna informações sobre a fatura e se está paga ou fechada
+ */
+export async function validateBillForTransaction(
+  userId: string,
+  creditCardId: string,
+  transactionDate: Date,
+  closingDay: number
+): Promise<BillValidationResult> {
+  // Calcular qual fatura a transação cairia baseado na data e fechamento
+  const billDate = getBillMonth(transactionDate, closingDay);
+  const { month: billMonth, year: billYear } = billDate;
+  
+  // Verificar se a fatura está paga
+  const paid = await isBillPaid(userId, creditCardId, billMonth, billYear);
+  
+  // Verificar se a fatura já fechou (comparar com data atual)
+  const today = new Date();
+  const currentDay = today.getDate();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+  
+  // Uma fatura está fechada se:
+  // 1. O mês/ano da fatura é anterior ao mês/ano atual, OU
+  // 2. É o mesmo mês/ano, mas o dia atual é maior que o dia de fechamento
+  let isClosed = false;
+  if (billYear < currentYear) {
+    isClosed = true;
+  } else if (billYear === currentYear && billMonth < currentMonth) {
+    isClosed = true;
+  } else if (billYear === currentYear && billMonth === currentMonth && currentDay > closingDay) {
+    isClosed = true;
+  }
+  
+  // Calcular próxima fatura disponível
+  let suggestedMonth = billMonth;
+  let suggestedYear = billYear;
+  
+  if (paid || isClosed) {
+    // Avançar para próxima fatura
+    suggestedMonth = billMonth + 1;
+    if (suggestedMonth > 12) {
+      suggestedMonth = 1;
+      suggestedYear = billYear + 1;
+    }
+  }
+  
+  // Determinar mensagem apropriada
+  let message: string | undefined;
+  if (paid) {
+    message = `A fatura de ${getMonthName(billMonth)}/${billYear} já foi paga. O lançamento será adicionado na fatura de ${getMonthName(suggestedMonth)}/${suggestedYear}.`;
+  } else if (isClosed) {
+    message = `A fatura de ${getMonthName(billMonth)}/${billYear} já fechou. O lançamento será adicionado na fatura de ${getMonthName(suggestedMonth)}/${suggestedYear}.`;
+  }
+  
+  return {
+    canAdd: !paid, // Pode adicionar se não estiver paga (fechada ainda permite)
+    billMonth: paid ? suggestedMonth : billMonth,
+    billYear: paid ? suggestedYear : billYear,
+    isPaid: paid,
+    isClosed,
+    message,
+    suggestedMonth: paid || isClosed ? suggestedMonth : undefined,
+    suggestedYear: paid || isClosed ? suggestedYear : undefined,
+  };
+}
+
+/**
+ * Calcula a fatura correta para uma transação, 
+ * considerando fechamento e redirecionando automaticamente para próxima fatura se necessário
+ */
+export async function getCorrectBillForTransaction(
+  userId: string,
+  creditCardId: string,
+  transactionDate: Date,
+  closingDay: number
+): Promise<{ month: number; year: number; wasRedirected: boolean; message?: string }> {
+  const validation = await validateBillForTransaction(userId, creditCardId, transactionDate, closingDay);
+  
+  return {
+    month: validation.billMonth,
+    year: validation.billYear,
+    wasRedirected: validation.isPaid || validation.isClosed,
+    message: validation.message,
+  };
 }
