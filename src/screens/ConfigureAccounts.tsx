@@ -10,6 +10,7 @@ import { useCustomAlert } from "../hooks/useCustomAlert";
 import { useSnackbar } from "../hooks/useSnackbar";
 import CustomAlert from "../components/CustomAlert";
 import Snackbar from "../components/Snackbar";
+import LoadingOverlay from "../components/LoadingOverlay";
 import MainLayout from "../components/MainLayout";
 import SimpleHeader from "../components/SimpleHeader";
 import { AccountType, ACCOUNT_TYPE_LABELS, Account } from "../types/firebase";
@@ -54,6 +55,13 @@ export default function ConfigureAccounts({ navigation }: any) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [adjustBalanceValue, setAdjustBalanceValue] = useState('');
   const [adjustBalanceModalVisible, setAdjustBalanceModalVisible] = useState(false);
+  
+  // Estado para loading overlay (operações longas)
+  const [loadingOverlay, setLoadingOverlay] = useState({
+    visible: false,
+    message: '',
+    progress: null as { current: number; total: number } | null,
+  });
 
   // Estado para modal de edição
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -317,22 +325,48 @@ export default function ConfigureAccounts({ navigation }: any) {
           text: 'Resetar', 
           style: 'destructive',
           onPress: async () => {
-            setSaving(true);
+            // Fechar o modal de edição primeiro
+            setEditModalVisible(false);
+            
+            // Mostrar loading overlay com progresso para operações longas
+            setLoadingOverlay({
+              visible: true,
+              message: 'Excluindo lançamentos...',
+              progress: count > 0 ? { current: 0, total: count } : null,
+            });
+            
             try {
               let deleted = 0;
               
               // Deletar todas as transações se houver
               if (count > 0) {
-                const result = await deleteTransactionsByAccount(user.uid, editingAccount.id);
+                const result = await deleteTransactionsByAccount(
+                  user.uid, 
+                  editingAccount.id,
+                  // Callback de progresso para atualizar a UI
+                  (current, total) => {
+                    setLoadingOverlay(prev => ({
+                      ...prev,
+                      progress: { current, total },
+                    }));
+                  }
+                );
                 
                 if (result.error) {
+                  setLoadingOverlay({ visible: false, message: '', progress: null });
                   showAlert('Erro', result.error, [{ text: 'OK', style: 'default' }]);
-                  setSaving(false);
                   return;
                 }
                 
                 deleted = result.deleted;
               }
+              
+              // Atualizar mensagem para próxima etapa
+              setLoadingOverlay(prev => ({
+                ...prev,
+                message: 'Zerando saldo...',
+                progress: null,
+              }));
               
               // Zerar o saldo da conta (sempre)
               await setAccountBalance(editingAccount.id, 0);
@@ -341,7 +375,22 @@ export default function ConfigureAccounts({ navigation }: any) {
               await updateAccount(editingAccount.id, { balance: 0 });
 
               // Notificar outras telas (Home/Lançamentos) para recarregar dados
+              // Importante: Fazer refresh ANTES de esconder o loading
+              setLoadingOverlay(prev => ({
+                ...prev,
+                message: 'Atualizando...',
+              }));
+              
               triggerRefresh();
+              
+              // Aguardar um pouco para garantir que o refresh foi processado
+              await new Promise(resolve => setTimeout(resolve, 300));
+              
+              // Esconder loading overlay
+              setLoadingOverlay({ visible: false, message: '', progress: null });
+              
+              // Limpar estado do modal
+              setEditingAccount(null);
               
               // Mensagem de sucesso dinâmica
               let successMessage = '';
@@ -350,23 +399,10 @@ export default function ConfigureAccounts({ navigation }: any) {
               }
               successMessage += 'Saldo zerado.';
               
-              showAlert(
-                'Conta resetada', 
-                successMessage,
-                [{ 
-                  text: 'OK', 
-                  style: 'default',
-                  onPress: () => {
-                    // Fechar modal
-                    setEditModalVisible(false);
-                    setEditingAccount(null);
-                  }
-                }]
-              );
+              showSnackbar(successMessage);
             } catch (err) {
+              setLoadingOverlay({ visible: false, message: '', progress: null });
               showAlert('Erro', 'Ocorreu um erro ao resetar a conta', [{ text: 'OK', style: 'default' }]);
-            } finally {
-              setSaving(false);
             }
           }
         },
@@ -1007,6 +1043,11 @@ export default function ConfigureAccounts({ navigation }: any) {
         type={snackbarState.type}
         duration={snackbarState.duration}
         onDismiss={hideSnackbar}
+      />
+      <LoadingOverlay
+        visible={loadingOverlay.visible}
+        message={loadingOverlay.message}
+        progress={loadingOverlay.progress}
       />
       </View>
     </MainLayout>

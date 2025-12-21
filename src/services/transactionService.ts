@@ -727,20 +727,36 @@ export async function getTransactionsBySeries(
 }
 
 // Deletar todas as transações de uma série
+// Deletar todas as transações de uma série
+// Otimizado com processamento paralelo em chunks para melhor performance
 export async function deleteTransactionSeries(
   userId: string,
-  seriesId: string
+  seriesId: string,
+  onProgress?: (current: number, total: number) => void
 ): Promise<number> {
   const transactions = await getTransactionsBySeries(userId, seriesId);
-  let deletedCount = 0;
+  
+  if (transactions.length === 0) {
+    return 0;
+  }
 
-  for (const transaction of transactions) {
-    try {
-      await deleteTransaction(transaction);
-      deletedCount++;
-    } catch (error) {
-      console.error(`Erro ao deletar transação ${transaction.id}:`, error);
-    }
+  const total = transactions.length;
+  let deletedCount = 0;
+  
+  // Processar em chunks de 5 para paralelização controlada
+  const CHUNK_SIZE = 5;
+  
+  for (let i = 0; i < total; i += CHUNK_SIZE) {
+    const chunk = transactions.slice(i, i + CHUNK_SIZE);
+    
+    const results = await Promise.allSettled(
+      chunk.map(transaction => deleteTransaction(transaction))
+    );
+    
+    deletedCount += results.filter(r => r.status === 'fulfilled').length;
+    
+    // Reportar progresso
+    onProgress?.(Math.min(i + CHUNK_SIZE, total), total);
   }
 
   return deletedCount;
@@ -1472,9 +1488,11 @@ export async function createBalanceAdjustment(
 // ==========================================
 
 // Deletar todas as transações de uma conta específica
+// Otimizado com processamento paralelo em chunks para melhor performance
 export async function deleteTransactionsByAccount(
   userId: string,
-  accountId: string
+  accountId: string,
+  onProgress?: (current: number, total: number) => void
 ): Promise<{ deleted: number; error?: string }> {
   try {
     // Buscar apenas transações onde a conta é ORIGEM:
@@ -1494,13 +1512,26 @@ export async function deleteTransactionsByAccount(
       return { deleted: 0 };
     }
 
-    // Deletar cada transação individualmente
-    // Para transferências: vai reverter apenas da conta origem (accountId)
-    // A conta destino (toAccountId) mantém o valor recebido
+    const total = transactions.length;
     let deleted = 0;
-    for (const transaction of transactions) {
-      await deleteTransaction(transaction);
-      deleted++;
+    
+    // Processar em chunks de 5 para paralelização controlada
+    // Mantém a lógica de deleteTransaction que reverte saldos
+    const CHUNK_SIZE = 5;
+    
+    for (let i = 0; i < total; i += CHUNK_SIZE) {
+      const chunk = transactions.slice(i, i + CHUNK_SIZE);
+      
+      // Processar chunk em paralelo
+      const results = await Promise.allSettled(
+        chunk.map(transaction => deleteTransaction(transaction))
+      );
+      
+      // Contar sucessos
+      deleted += results.filter(r => r.status === 'fulfilled').length;
+      
+      // Reportar progresso
+      onProgress?.(Math.min(i + CHUNK_SIZE, total), total);
     }
 
     return { deleted };

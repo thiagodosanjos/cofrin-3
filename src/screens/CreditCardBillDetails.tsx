@@ -5,6 +5,7 @@ import { useCustomAlert } from "../hooks/useCustomAlert";
 import { useSnackbar } from "../hooks/useSnackbar";
 import CustomAlert from "../components/CustomAlert";
 import Snackbar from "../components/Snackbar";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTransactions } from '../hooks/useFirebaseTransactions';
 import { useAppTheme } from '../contexts/themeContext';
@@ -55,6 +56,12 @@ export default function CreditCardBillDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const [paying, setPaying] = useState(false);
   const [unpaying, setUnpaying] = useState(false);
+  
+  // Estado para loading overlay (operações longas)
+  const [loadingOverlay, setLoadingOverlay] = useState({
+    visible: false,
+    message: '',
+  });
   
   // Modal de seleção de conta para pagamento
   const [payModalVisible, setPayModalVisible] = useState(false);
@@ -199,7 +206,12 @@ export default function CreditCardBillDetails() {
         {
           text: 'Pagar',
           onPress: async () => {
-            setPaying(true);
+            // Fechar modal de seleção de conta
+            setPayModalVisible(false);
+            
+            // Mostrar loading overlay
+            setLoadingOverlay({ visible: true, message: 'Pagando fatura...' });
+            
             try {
               await payBill(
                 bill.id,
@@ -208,15 +220,21 @@ export default function CreditCardBillDetails() {
                 summary.total
               );
               
+              // Atualizar dados antes de esconder loading
+              setLoadingOverlay({ visible: true, message: 'Atualizando...' });
+              await loadBillDetails();
+              triggerRefresh();
+              
+              // Aguardar um pouco para garantir que o refresh foi processado
+              await new Promise(resolve => setTimeout(resolve, 200));
+              
+              // Esconder loading e mostrar sucesso
+              setLoadingOverlay({ visible: false, message: '' });
               showSnackbar('Fatura paga com sucesso!');
-              setPayModalVisible(false);
-              loadBillDetails(); // Recarregar dados
-              triggerRefresh(); // Atualizar Home/Resumo/Relatórios/Contas
             } catch (error) {
               console.error('Erro ao pagar fatura:', error);
+              setLoadingOverlay({ visible: false, message: '' });
               showAlert('Erro', 'Não foi possível pagar a fatura', [{ text: 'OK' }]);
-            } finally {
-              setPaying(false);
             }
           },
         },
@@ -397,28 +415,35 @@ export default function CreditCardBillDetails() {
                     {
                       text: 'Desfazer',
                       onPress: async () => {
-                        setUnpaying(true);
+                        // Mostrar loading overlay
+                        setLoadingOverlay({ visible: true, message: 'Desfazendo pagamento...' });
+                        
                         try {
                           await unpayBill(bill.id);
+                          
+                          // Atualizar dados antes de esconder loading
+                          setLoadingOverlay({ visible: true, message: 'Atualizando...' });
+                          await loadBillDetails();
+                          triggerRefresh();
+                          
+                          await new Promise(resolve => setTimeout(resolve, 200));
+                          
+                          setLoadingOverlay({ visible: false, message: '' });
                           showSnackbar('Pagamento desfeito!');
-                          loadBillDetails();
-                          triggerRefresh(); // Atualizar Home/Resumo/Relatórios/Contas
                         } catch (err) {
                           console.error('Erro ao desfazer pagamento:', err);
+                          setLoadingOverlay({ visible: false, message: '' });
                           showAlert('Erro', 'Não foi possível desfazer o pagamento', [{ text: 'OK' }]);
-                        } finally {
-                          setUnpaying(false);
                         }
                       }
                     }
                   ]
                 );
               }}
-              disabled={unpaying}
             >
               <MaterialCommunityIcons name="undo" size={18} color={colors.text} />
               <Text style={[styles.unpayButtonText, { color: colors.text }]}>
-                {unpaying ? 'Desfazendo...' : 'Desfazer pagamento'}
+                Desfazer pagamento
               </Text>
             </Pressable>
           )}
@@ -550,6 +575,10 @@ export default function CreditCardBillDetails() {
         type={snackbarState.type}
         duration={snackbarState.duration}
         onDismiss={hideSnackbar}
+      />
+      <LoadingOverlay
+        visible={loadingOverlay.visible}
+        message={loadingOverlay.message}
       />
       
       {/* Modal de edição de transação */}

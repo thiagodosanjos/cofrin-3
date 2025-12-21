@@ -7,6 +7,7 @@ import { useCustomAlert } from "../hooks/useCustomAlert";
 import { useSnackbar } from "../hooks/useSnackbar";
 import CustomAlert from "../components/CustomAlert";
 import Snackbar from "../components/Snackbar";
+import LoadingOverlay from "../components/LoadingOverlay";
 import MainLayout from "../components/MainLayout";
 import SimpleHeader from "../components/SimpleHeader";
 import { useAuth } from "../contexts/authContext";
@@ -35,6 +36,13 @@ export default function CreditCards({ navigation }: any) {
   const [selectedAccountName, setSelectedAccountName] = useState('');
   const [showAccountPicker, setShowAccountPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Estado para loading overlay (operações longas)
+  const [loadingOverlay, setLoadingOverlay] = useState({
+    visible: false,
+    message: '',
+    progress: null as { current: number; total: number } | null,
+  });
 
   // Estado para modal de edição
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -278,25 +286,52 @@ export default function CreditCards({ navigation }: any) {
 
   // Excluir cartão do modal
   async function handleDeleteFromModal() {
-    if (!editingCard) return;
+    if (!editingCard || !user?.uid) return;
+    
+    // Contar transações antes de confirmar
+    const transactionCount = await countTransactionsByCreditCard(user.uid, editingCard.id);
+    
+    const message = transactionCount > 0
+      ? `O cartão "${editingCard.name}" será excluído junto com ${transactionCount} lançamento${transactionCount > 1 ? 's' : ''}. Esta ação não pode ser desfeita.`
+      : `O cartão "${editingCard.name}" será excluído e não poderá ser recuperado.`;
     
     showAlert(
       'Excluir permanentemente?',
-      `O cartão "${editingCard.name}" será excluído e não poderá ser recuperado. Os lançamentos associados a ele também serão excluídos.`,
+      message,
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Excluir', 
           style: 'destructive',
           onPress: async () => {
-            const result = await deleteCreditCard(editingCard.id);
-            if (result) {
-              setEditModalVisible(false);
-              setEditingCard(null);
-              triggerRefresh();
-              showSnackbar('Cartão excluído!');
-            } else {
-              showAlert('Erro', 'Não foi possível excluir o cartão', [{ text: 'OK', style: 'default' }]);
+            // Fechar modal primeiro
+            setEditModalVisible(false);
+            
+            // Mostrar loading overlay se houver muitas transações
+            if (transactionCount > 5) {
+              setLoadingOverlay({
+                visible: true,
+                message: `Excluindo ${transactionCount} lançamentos...`,
+                progress: null,
+              });
+            }
+            
+            try {
+              const result = await deleteCreditCard(editingCard.id);
+              
+              // Esconder loading overlay
+              setLoadingOverlay({ visible: false, message: '', progress: null });
+              
+              if (result) {
+                setEditingCard(null);
+                triggerRefresh();
+                showSnackbar('Cartão excluído!');
+              } else {
+                showAlert('Erro', 'Não foi possível excluir o cartão', [{ text: 'OK', style: 'default' }]);
+              }
+            } catch (error) {
+              setLoadingOverlay({ visible: false, message: '', progress: null });
+              showAlert('Erro', 'Ocorreu um erro ao excluir o cartão', [{ text: 'OK', style: 'default' }]);
             }
           }
         },
@@ -777,6 +812,11 @@ export default function CreditCards({ navigation }: any) {
         type={snackbarState.type}
         duration={snackbarState.duration}
         onDismiss={hideSnackbar}
+      />
+      <LoadingOverlay
+        visible={loadingOverlay.visible}
+        message={loadingOverlay.message}
+        progress={loadingOverlay.progress}
       />
       </View>
     </MainLayout>

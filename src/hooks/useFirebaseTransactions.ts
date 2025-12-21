@@ -190,11 +190,15 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   };
 
   // Deletar série de transações
-  const deleteTransactionSeries = async (seriesId: string): Promise<number> => {
+  // Suporta callback de progresso para operações com muitas parcelas
+  const deleteTransactionSeries = async (
+    seriesId: string,
+    onProgress?: (current: number, total: number) => void
+  ): Promise<number> => {
     if (!user?.uid) return 0;
     
     try {
-      const deletedCount = await transactionService.deleteTransactionSeries(user.uid, seriesId);
+      const deletedCount = await transactionService.deleteTransactionSeries(user.uid, seriesId, onProgress);
       // Remover todas do estado local que tenham o mesmo seriesId
       setTransactions(prev => prev.filter(t => t.seriesId !== seriesId));
       return deletedCount;

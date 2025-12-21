@@ -25,6 +25,7 @@ import { useCustomAlert } from '../../hooks/useCustomAlert';
 import { useSnackbar } from '../../hooks/useSnackbar';
 import CustomAlert from '../CustomAlert';
 import Snackbar from '../Snackbar';
+import LoadingOverlay from '../LoadingOverlay';
 import { TransactionType, RecurrenceType, CreateTransactionInput } from '../../types/firebase';
 import { useTransactionRefresh } from '../../contexts/transactionRefreshContext';
 import { validateBillForTransaction } from '../../services/creditCardBillService';
@@ -1550,6 +1551,13 @@ export default function AddTransactionModal({
         type={snackbarState.type}
         duration={snackbarState.duration}
         onDismiss={hideSnackbar}
+      />
+      
+      {/* Loading overlay para criação de múltiplas parcelas */}
+      <LoadingOverlay
+        visible={saving && savingProgress !== null && savingProgress.total > 3}
+        message={savingProgress ? `Criando lançamentos...` : 'Salvando...'}
+        progress={savingProgress}
       />
     </>
   );
