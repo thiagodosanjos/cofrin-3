@@ -42,6 +42,7 @@ export default function MainLayout({ children }: Props) {
         onHome={() => navigation.navigate('Bem-vindo' as any)}
         onAdd={openAdd}
         onLaunches={() => navigation.navigate('Lançamentos' as any)}
+        onCategories={() => navigation.navigate('CategoryDetails' as any)}
         onSettings={() => navigation.navigate('Configurações' as any)}
       />
 

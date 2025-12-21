@@ -379,6 +379,64 @@ export function useExpensesByCategory(month: number, year: number) {
   };
 }
 
+// Hook para receitas por categoria
+export function useIncomesByCategory(month: number, year: number) {
+  const { user } = useAuth();
+  const { refreshKey } = useTransactionRefresh();
+  const [incomes, setIncomes] = useState<Array<{
+    categoryId: string;
+    categoryName: string;
+    categoryIcon: string;
+    total: number;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadIncomes = useCallback(async () => {
+    if (!user?.uid) {
+      setIncomes([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await transactionService.getIncomesByCategory(user.uid, month, year);
+      const incomesArray = Array.from(data.values())
+        .sort((a, b) => b.total - a.total);
+      setIncomes(incomesArray);
+    } catch (err) {
+      console.error('Erro ao carregar receitas por categoria:', err);
+      setError('Erro ao carregar receitas por categoria');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.uid, month, year]);
+
+  useEffect(() => {
+    loadIncomes();
+  }, [loadIncomes]);
+
+  // Recarregar quando ocorrerem mudanças globais
+  useEffect(() => {
+    if (refreshKey > 0) {
+      loadIncomes();
+    }
+  }, [refreshKey, loadIncomes]);
+
+  const total = incomes.reduce((sum, i) => sum + i.total, 0);
+
+  return {
+    incomes,
+    total,
+    loading,
+    error,
+    refresh: loadIncomes,
+  };
+}
+
 // Hook para relatório completo do mês
 export function useMonthReport(month: number, year: number) {
   const { user } = useAuth();

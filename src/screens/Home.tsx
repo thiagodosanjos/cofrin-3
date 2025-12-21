@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../contexts/authContext";
 import { useAppTheme } from "../contexts/themeContext";
-import { useTransactions, useExpensesByCategory, useMonthReport } from "../hooks/useFirebaseTransactions";
+import { useTransactions, useExpensesByCategory, useIncomesByCategory, useMonthReport } from "../hooks/useFirebaseTransactions";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCreditCards } from "../hooks/useCreditCards";
 import { useGoal } from "../hooks/useGoal";
@@ -11,7 +11,7 @@ import { useTransactionRefresh } from "../contexts/transactionRefreshContext";
 import { useEffect, useMemo, useCallback, useState } from "react";
 import MainLayout from "../components/MainLayout";
 import AccountsCard from "../components/home/AccountsCard";
-import ExpensesByCategoryCard from "../components/ExpensesByCategoryCard";
+import TransactionsByCategoryCard from "../components/TransactionsByCategoryCard";
 import CreditCardsCard from "../components/home/CreditCardsCard";
 import GoalCard from "../components/home/GoalCard";
 import CreateGoalModal from "../components/CreateGoalModal";
@@ -59,6 +59,9 @@ export default function Home() {
 
   // Hook de gastos por categoria
   const { expenses: categoryExpenses } = useExpensesByCategory(currentMonth, currentYear);
+
+  // Hook de receitas por categoria
+  const { incomes: categoryIncomes } = useIncomesByCategory(currentMonth, currentYear);
 
   // Hook de meta financeira
   const { goal, progressPercentage, refresh: refreshGoal } = useGoal();
@@ -245,12 +248,16 @@ export default function Home() {
 
             <View style={{ height: 24 }} />
 
-            {/* 5. Onde você gastou (categoria principal) */}
-            <ExpensesByCategoryCard
+            {/* 5. Transações por Categoria (com filtro) */}
+            <TransactionsByCategoryCard
               expenses={categoryExpenses}
+              incomes={categoryIncomes}
               totalExpenses={report?.expense || totalExpense}
+              totalIncomes={report?.income || totalIncome}
               maxItems={5}
               showTitle={true}
+              initialFilter="expense"
+              showFilterToggle={true}
             />
 
             {/* Modais */}

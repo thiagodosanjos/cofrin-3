@@ -14,6 +14,7 @@ import AppHeader from '../components/AppHeader';
 import { useNavigation } from '@react-navigation/native';
 
 type ViewMode = 'monthly' | 'yearly';
+type TransactionTypeFilter = 'expense' | 'income';
 
 interface CategoryData {
   categoryId: string;
@@ -33,6 +34,7 @@ export default function CategoryDetails() {
   const navigation = useNavigation();
   const { refreshKey } = useTransactionRefresh();
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
+  const [transactionType, setTransactionType] = useState<TransactionTypeFilter>('expense');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -42,7 +44,8 @@ export default function CategoryDetails() {
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   
   // Dados
-  const [allData, setAllData] = useState<any>(null);
+  const [expenseData, setExpenseData] = useState<any>(null);
+  const [incomeData, setIncomeData] = useState<any>(null);
   const [showYearPicker, setShowYearPicker] = useState(false);
 
   useEffect(() => {
@@ -58,13 +61,15 @@ export default function CategoryDetails() {
     
     try {
       const currentYear = new Date().getFullYear();
-      const data = await transactionService.getCategoryExpensesOverTime(
-        user.uid,
-        currentYear - 3,
-        currentYear
-      );
+      
+      // Carregar dados de despesas e receitas em paralelo
+      const [expenses, incomes] = await Promise.all([
+        transactionService.getCategoryDataOverTime(user.uid, currentYear - 3, currentYear, 'expense'),
+        transactionService.getCategoryDataOverTime(user.uid, currentYear - 3, currentYear, 'income'),
+      ]);
 
-      setAllData(data);
+      setExpenseData(expenses);
+      setIncomeData(incomes);
     } catch (error) {
       console.error('Erro ao carregar dados de categorias:', error);
     } finally {
@@ -126,6 +131,9 @@ export default function CategoryDetails() {
 
   const isCurrentMonth = selectedMonth === today.getMonth() + 1 && selectedYear === today.getFullYear();
 
+  // Selecionar dados baseado no tipo de transação
+  const allData = transactionType === 'expense' ? expenseData : incomeData;
+
   // Dados do período atual
   const currentPeriodData = useMemo(() => {
     if (!allData) return null;
@@ -153,13 +161,17 @@ export default function CategoryDetails() {
 
       return { categories, total };
     }
-  }, [allData, viewMode, selectedMonth, selectedYear]);
+  }, [allData, viewMode, selectedMonth, selectedYear, transactionType]);
 
   // Gerar insights
   const insights = useMemo(() => {
     if (!allData || !currentPeriodData) return [];
 
     const messages: string[] = [];
+    const isExpense = transactionType === 'expense';
+    const verbGasto = isExpense ? 'gastava' : 'recebia';
+    const nomeGasto = isExpense ? 'gastos' : 'receitas';
+    const nomeGastoSingular = isExpense ? 'gasto' : 'receita';
 
     if (viewMode === 'monthly') {
       // Comparar com mês anterior
@@ -180,7 +192,7 @@ export default function CategoryDetails() {
         const prevTop = prevCategories.sort((a: any, b: any) => b.total - a.total)[0];
 
         if (prevTop && currentTop.categoryId !== prevTop.categoryId) {
-          messages.push(`No passado, você gastava mais com ${prevTop.categoryName}.`);
+          messages.push(`No passado, você ${verbGasto} mais com ${prevTop.categoryName}.`);
         }
 
         // Verificar categoria com maior redução
@@ -203,7 +215,7 @@ export default function CategoryDetails() {
         }
 
         if (reducedCategory) {
-          messages.push(`Neste mês, seus gastos com ${reducedCategory.categoryName} diminuíram.`);
+          messages.push(`Neste mês, suas ${nomeGasto} com ${reducedCategory.categoryName} diminuíram.`);
         }
       }
     } else {
@@ -212,7 +224,7 @@ export default function CategoryDetails() {
         const topCategory = currentPeriodData.categories[0];
         const percentage = ((topCategory.total / currentPeriodData.total) * 100).toFixed(0);
         messages.push(
-          `${topCategory.categoryName} foi sua categoria com maior gasto no ano (${percentage}%).`
+          `${topCategory.categoryName} foi sua categoria com maior ${nomeGastoSingular} no ano (${percentage}%).`
         );
       }
 
@@ -241,6 +253,10 @@ export default function CategoryDetails() {
     return years;
   }, [allData]);
 
+  // Cores baseadas no tipo de transação
+  const valueColor = transactionType === 'expense' ? colors.expense : colors.income;
+  const iconBgColor = transactionType === 'expense' ? colors.dangerBg : (colors.successBg || '#DCFCE7');
+
   const renderCategoryCard = (category: any, index: number) => {
     if (!currentPeriodData) return null;
 
@@ -251,8 +267,8 @@ export default function CategoryDetails() {
     return (
       <View key={category.categoryId} style={[styles.categoryCard, { backgroundColor: colors.card }, getShadow(colors)]}>
         <View style={styles.categoryHeader}>
-          <View style={[styles.categoryIcon, { backgroundColor: `${colors.primary}20` }]}>
-            <MaterialCommunityIcons name={category.categoryIcon as any} size={24} color={colors.primary} />
+          <View style={[styles.categoryIcon, { backgroundColor: iconBgColor }]}>
+            <MaterialCommunityIcons name={category.categoryIcon as any} size={24} color={valueColor} />
           </View>
           <View style={styles.categoryInfo}>
             <Text style={[styles.categoryName, { color: colors.text }]}>{category.categoryName}</Text>
@@ -260,7 +276,7 @@ export default function CategoryDetails() {
               {percentage.toFixed(0)}% do total
             </Text>
           </View>
-          <Text style={[styles.categoryValue, { color: colors.expense }]}>
+          <Text style={[styles.categoryValue, { color: valueColor }]}>
             {formatCurrencyBRL(category.total)}
           </Text>
         </View>
@@ -271,7 +287,7 @@ export default function CategoryDetails() {
               styles.progressFill, 
               { 
                 width: `${Math.min(percentage, 100)}%`,
-                backgroundColor: colors.primary
+                backgroundColor: valueColor
               }
             ]} 
           />
@@ -441,6 +457,49 @@ export default function CategoryDetails() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Toggle Transaction Type (Despesas / Receitas) */}
+            <View style={[styles.viewModeToggle, { backgroundColor: colors.grayLight, marginTop: spacing.sm }]}>
+              <TouchableOpacity
+                style={[
+                  styles.toggleButton,
+                  transactionType === 'expense' && { backgroundColor: colors.card }
+                ]}
+                onPress={() => setTransactionType('expense')}
+              >
+                <MaterialCommunityIcons 
+                  name="arrow-down" 
+                  size={14} 
+                  color={transactionType === 'expense' ? colors.expense : colors.textMuted} 
+                />
+                <Text style={[
+                  styles.toggleText,
+                  { color: transactionType === 'expense' ? colors.expense : colors.textMuted, marginLeft: 4 }
+                ]}>
+                  Despesas
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.toggleButton,
+                  transactionType === 'income' && { backgroundColor: colors.card }
+                ]}
+                onPress={() => setTransactionType('income')}
+              >
+                <MaterialCommunityIcons 
+                  name="arrow-up" 
+                  size={14} 
+                  color={transactionType === 'income' ? colors.income : colors.textMuted} 
+                />
+                <Text style={[
+                  styles.toggleText,
+                  { color: transactionType === 'income' ? colors.income : colors.textMuted, marginLeft: 4 }
+                ]}>
+                  Receitas
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Content */}
@@ -452,7 +511,9 @@ export default function CategoryDetails() {
             <View style={[styles.emptyState, { backgroundColor: colors.grayLight }]}>
               <MaterialCommunityIcons name="information" size={24} color={colors.textMuted} />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                Nenhum gasto registrado neste período
+                {transactionType === 'expense' 
+                  ? 'Nenhum gasto registrado neste período'
+                  : 'Nenhuma receita registrada neste período'}
               </Text>
             </View>
           ) : (

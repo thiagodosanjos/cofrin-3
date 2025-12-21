@@ -9,13 +9,14 @@ type Props = {
   onHome: () => void;
   onAdd: () => void;
   onLaunches: () => void;
+  onCategories: () => void;
   onSettings: () => void;
 };
 
 // Compact bar height for all platforms (row height only; paddings are added separately)
 export const FOOTER_HEIGHT = 56;
 
-export default function AppFooter({ onHome, onAdd, onLaunches, onSettings }: Props) {
+export default function AppFooter({ onHome, onAdd, onLaunches, onCategories, onSettings }: Props) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const route = useRoute();
@@ -92,6 +93,10 @@ export default function AppFooter({ onHome, onAdd, onLaunches, onSettings }: Pro
               >
                 <MaterialCommunityIcons name="plus" size={28} color="#fff" />
               </Pressable>
+            </View>
+
+            <View style={styles.slot}>
+              <IconButton icon="chart-pie" onPress={onCategories} routeName="CategoryDetails" />
             </View>
 
             <View style={styles.slot}>

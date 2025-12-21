@@ -811,6 +811,35 @@ export async function getExpensesByCategory(
   return byCategory;
 }
 
+// Buscar receitas por categoria
+export async function getIncomesByCategory(
+  userId: string,
+  month: number,
+  year: number
+): Promise<Map<string, { categoryId: string; categoryName: string; categoryIcon: string; total: number }>> {
+  const transactions = await getTransactionsByType(userId, 'income', month, year);
+  
+  const byCategory = new Map<string, { categoryId: string; categoryName: string; categoryIcon: string; total: number }>();
+
+  for (const t of transactions) {
+    if (t.status !== 'completed' || !t.categoryId) continue;
+
+    const existing = byCategory.get(t.categoryId);
+    if (existing) {
+      existing.total += t.amount;
+    } else {
+      byCategory.set(t.categoryId, {
+        categoryId: t.categoryId,
+        categoryName: t.categoryName || 'Sem categoria',
+        categoryIcon: t.categoryIcon || 'dots-horizontal',
+        total: t.amount,
+      });
+    }
+  }
+
+  return byCategory;
+}
+
 // Contar transações por categoria
 export async function getTransactionCountByCategory(
   userId: string,
@@ -877,6 +906,142 @@ export async function getCategoryExpensesOverTime(
       const billKey = `${t.creditCardId}-${t.month}-${t.year}`;
       if (pendingBills.has(billKey)) {
         continue; // Fatura pendente - não conta
+      }
+    }
+
+    // Mensal
+    const monthKey = `${t.year}-${String(t.month).padStart(2, '0')}`;
+    if (!monthlyMap.has(monthKey)) {
+      monthlyMap.set(monthKey, []);
+    }
+    monthlyMap.get(monthKey)!.push(t);
+
+    // Anual
+    if (!yearlyMap.has(t.year)) {
+      yearlyMap.set(t.year, []);
+    }
+    yearlyMap.get(t.year)!.push(t);
+  }
+
+  // Processar dados mensais
+  const monthlyData: Array<{
+    month: number;
+    year: number;
+    categories: Map<string, { categoryId: string; categoryName: string; categoryIcon: string; total: number }>;
+  }> = [];
+
+  for (const [monthKey, monthTransactions] of monthlyMap.entries()) {
+    const [yearStr, monthStr] = monthKey.split('-');
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr);
+
+    const categories = new Map<string, { categoryId: string; categoryName: string; categoryIcon: string; total: number }>();
+
+    for (const t of monthTransactions) {
+      const existing = categories.get(t.categoryId!);
+      if (existing) {
+        existing.total += t.amount;
+      } else {
+        categories.set(t.categoryId!, {
+          categoryId: t.categoryId!,
+          categoryName: t.categoryName || 'Sem categoria',
+          categoryIcon: t.categoryIcon || 'dots-horizontal',
+          total: t.amount,
+        });
+      }
+    }
+
+    monthlyData.push({ month, year, categories });
+  }
+
+  // Ordenar mensais por data (mais recente primeiro)
+  monthlyData.sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year;
+    return b.month - a.month;
+  });
+
+  // Processar dados anuais
+  const yearlyData: Array<{
+    year: number;
+    categories: Map<string, { categoryId: string; categoryName: string; categoryIcon: string; total: number }>;
+  }> = [];
+
+  for (const [year, yearTransactions] of yearlyMap.entries()) {
+    const categories = new Map<string, { categoryId: string; categoryName: string; categoryIcon: string; total: number }>();
+
+    for (const t of yearTransactions) {
+      const existing = categories.get(t.categoryId!);
+      if (existing) {
+        existing.total += t.amount;
+      } else {
+        categories.set(t.categoryId!, {
+          categoryId: t.categoryId!,
+          categoryName: t.categoryName || 'Sem categoria',
+          categoryIcon: t.categoryIcon || 'dots-horizontal',
+          total: t.amount,
+        });
+      }
+    }
+
+    yearlyData.push({ year, categories });
+  }
+
+  // Ordenar anuais (mais recente primeiro)
+  yearlyData.sort((a, b) => b.year - a.year);
+
+  return { monthlyData, yearlyData };
+}
+
+// Buscar dados por categoria ao longo do tempo (genérico para despesas ou receitas)
+export async function getCategoryDataOverTime(
+  userId: string,
+  startYear: number,
+  endYear: number,
+  transactionType: 'expense' | 'income'
+): Promise<{
+  monthlyData: Array<{
+    month: number;
+    year: number;
+    categories: Map<string, { categoryId: string; categoryName: string; categoryIcon: string; total: number }>;
+  }>;
+  yearlyData: Array<{
+    year: number;
+    categories: Map<string, { categoryId: string; categoryName: string; categoryIcon: string; total: number }>;
+  }>;
+}> {
+  // Buscar todas as transações do tipo especificado
+  const q = query(
+    transactionsRef,
+    where('userId', '==', userId),
+    where('type', '==', transactionType)
+  );
+
+  const snapshot = await getDocs(q);
+  const allTransactions = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Transaction[];
+
+  // Filtrar por ano no código
+  const transactions = allTransactions.filter(t => 
+    t.year >= startYear && t.year <= endYear
+  );
+
+  // Buscar faturas pendentes (apenas relevante para despesas)
+  const pendingBills = transactionType === 'expense' ? await getPendingBillsMap(userId) : new Map();
+
+  // Agrupar por mês
+  const monthlyMap = new Map<string, Transaction[]>();
+  const yearlyMap = new Map<number, Transaction[]>();
+
+  for (const t of transactions) {
+    if (t.status !== 'completed' || !t.categoryId) continue;
+    
+    // Ignorar transações de cartão com fatura pendente (apenas despesas)
+    if (transactionType === 'expense' && t.creditCardId && t.month && t.year) {
+      const billKey = `${t.creditCardId}-${t.month}-${t.year}`;
+      if (pendingBills.has(billKey)) {
+        continue;
       }
     }
 
