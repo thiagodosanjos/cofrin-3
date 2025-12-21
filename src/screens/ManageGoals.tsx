@@ -165,6 +165,22 @@ export default function ManageGoals() {
     }
   };
 
+  // Função de exclusão direta (usada pelo CreateGoalModal que já tem confirmação própria)
+  const deleteGoalDirectly = async (goal: Goal) => {
+    if (!user) return;
+    
+    try {
+      await goalService.deleteGoal(goal.id, user.uid);
+      refresh();
+      triggerRefresh();
+      setShowGoalModal(false);
+      setSelectedGoal(null);
+    } catch (error: any) {
+      console.error('Erro ao excluir meta:', error);
+      throw error; // Propagar erro para o modal tratar
+    }
+  };
+
   const handleDeleteGoal = async (goal: Goal) => {
     if (!user) return;
 
@@ -316,7 +332,7 @@ export default function ManageGoals() {
               ]}
             >
               <MaterialCommunityIcons name="plus" size={16} color={colors.primary} />
-              <Text style={[styles.actionButtonText, { color: colors.primary }]}>Adicionar</Text>
+              <Text style={[styles.actionButtonText, { color: colors.primary }]}>Adicionar progresso</Text>
             </Pressable>
           )}
 
@@ -333,18 +349,6 @@ export default function ManageGoals() {
               <Text style={[styles.actionButtonText, { color: colors.income }]}>Definir como principal</Text>
             </Pressable>
           )}
-
-          <Pressable
-            onPress={() => handleDeleteGoal(goal)}
-            style={({ pressed }) => [
-              styles.actionButton,
-              { backgroundColor: colors.dangerBg },
-              pressed && { opacity: 0.7 }
-            ]}
-          >
-            <MaterialCommunityIcons name="trash-can-outline" size={16} color={colors.expense} />
-            <Text style={[styles.actionButtonText, { color: colors.expense }]}>Excluir</Text>
-          </Pressable>
         </View>
       </View>
     );
@@ -447,7 +451,7 @@ export default function ManageGoals() {
           setSelectedGoal(null);
         }}
         onSave={(data) => handleSaveGoal(data, false)}
-        onDelete={selectedGoal ? () => handleDeleteGoal(selectedGoal) : undefined}
+        onDelete={selectedGoal ? () => deleteGoalDirectly(selectedGoal) : undefined}
         existingGoal={selectedGoal}
         progressPercentage={
           selectedGoal 

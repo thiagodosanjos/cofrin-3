@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import {
-  View,
-  StyleSheet,
-  Modal,
-  Pressable,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
+    View,
+    StyleSheet,
+    Modal,
+    Pressable,
+    TextInput,
+    ScrollView,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DatePickerCrossPlatform from './DatePickerCrossPlatform';
+import CustomAlert from './CustomAlert';
 
 import { useAppTheme } from '../contexts/themeContext';
 import { spacing, borderRadius } from '../theme';
@@ -59,12 +59,22 @@ export default function CreateGoalModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
+  // Função para formatar número para moeda brasileira
+  const formatNumberToCurrency = (num: number): string => {
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
   // Preencher com dados existentes se estiver editando
   useEffect(() => {
     if (existingGoal) {
       setName(existingGoal.name);
-      setTargetAmount(existingGoal.targetAmount.toString());
+      // Formatar o valor corretamente para exibição
+      setTargetAmount(formatNumberToCurrency(existingGoal.targetAmount));
       // Se tem targetDate, usar; senão calcular com base no timeframe (legado)
       if (existingGoal.targetDate) {
         setTargetDate(existingGoal.targetDate.toDate());
@@ -131,39 +141,23 @@ export default function CreateGoalModal({
 
   const handleDelete = async () => {
     if (!onDelete || !existingGoal) return;
+    setShowDeleteAlert(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!onDelete || !existingGoal) return;
     
-    // Mostrar confirmação com progresso
-    const progress = Math.round(progressPercentage);
-    const message = progress > 0 
-      ? `Tem certeza que quer excluir sua meta?\n\nVocê já tem ${progress}% de progresso (R$ ${existingGoal.currentAmount.toFixed(2)} de R$ ${existingGoal.targetAmount.toFixed(2)}).`
-      : `Tem certeza que quer excluir sua meta?\n\nEsta ação não pode ser desfeita.`;
-    
-    Alert.alert(
-      'Excluir meta',
-      message,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeleting(true);
-              setError('');
-              await onDelete(true);
-              onClose();
-            } catch (err: any) {
-              setError(err.message || 'Erro ao excluir meta');
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ]
-    );
+    try {
+      setDeleting(true);
+      setError('');
+      setShowDeleteAlert(false);
+      await onDelete(true);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Erro ao excluir meta');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const formatCurrency = (value: string) => {
@@ -332,6 +326,22 @@ export default function CreateGoalModal({
         </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Alert de confirmação de exclusão */}
+      <CustomAlert
+        visible={showDeleteAlert}
+        title="Excluir meta"
+        message={
+          existingGoal && progressPercentage > 0
+            ? `Tem certeza que quer excluir sua meta?\n\nVocê já tem ${Math.round(progressPercentage)}% de progresso (R$ ${existingGoal.currentAmount.toFixed(2)} de R$ ${existingGoal.targetAmount.toFixed(2)}).`
+            : 'Tem certeza que quer excluir sua meta?\n\nEsta ação não pode ser desfeita.'
+        }
+        buttons={[
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Excluir', style: 'destructive', onPress: confirmDelete },
+        ]}
+        onClose={() => setShowDeleteAlert(false)}
+      />
     </Modal>
   );
 }
