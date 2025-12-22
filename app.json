@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cofrin",
     "slug": "cofrin",
-    "version": "1.0.11",
+    "version": "1.0.12",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,11 +16,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.cofrin.app",
-      "buildNumber": "11"
+      "buildNumber": "12"
     },
     "android": {
       "package": "com.cofrin.app",
-      "versionCode": 11,
+      "versionCode": 12,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
