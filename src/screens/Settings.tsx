@@ -167,7 +167,13 @@ export default function Settings({ navigation }: any) {
         }
       }
 
-      // Nota: O logout é automático após deletar a conta do Firebase Auth
+      // Garantir logout após deletar a conta
+      try {
+        await logout();
+      } catch {
+        // Ignora erro de logout se usuário já foi removido
+      }
+
       showAlert('Conta deletada', 'Sua conta e todos os dados foram removidos com sucesso.');
     } catch (error: any) {
       console.error('Erro ao deletar conta:', error);
