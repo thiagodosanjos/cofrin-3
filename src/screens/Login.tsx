@@ -23,6 +23,7 @@ export default function Login({ navigation }: any) {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const { request, promptAsync, isAuthenticating: googleLoading } = useGoogleAuth();
 
@@ -111,7 +112,10 @@ export default function Login({ navigation }: any) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Bem-vindo de volta!</Text>
 
-          <View style={styles.inputContainer}>
+          <View style={[
+            styles.inputContainer,
+            { borderColor: focusedField === 'email' ? LOGIN_COLORS.primary : '#E0E0E0' }
+          ]}>
             <MaterialCommunityIcons name="email-outline" size={20} color="#6B6B6B" style={styles.inputIcon} />
             <TextInput
               placeholder="Email"
@@ -122,10 +126,15 @@ export default function Login({ navigation }: any) {
               keyboardType="email-address"
               style={styles.input}
               editable={!loading}
+              onFocus={() => setFocusedField('email')}
+              onBlur={() => setFocusedField(null)}
             />
           </View>
 
-          <View style={styles.inputContainer}>
+          <View style={[
+            styles.inputContainer,
+            { borderColor: focusedField === 'password' ? LOGIN_COLORS.primary : '#E0E0E0' }
+          ]}>
             <MaterialCommunityIcons name="lock-outline" size={20} color="#6B6B6B" style={styles.inputIcon} />
             <TextInput
               placeholder="Senha"
@@ -135,6 +144,8 @@ export default function Login({ navigation }: any) {
               secureTextEntry={!showPassword}
               style={styles.input}
               editable={!loading}
+              onFocus={() => setFocusedField('password')}
+              onBlur={() => setFocusedField(null)}
             />
             <Pressable
               onPress={() => setShowPassword((s) => !s)}
@@ -158,7 +169,10 @@ export default function Login({ navigation }: any) {
 
           {showReset && (
             <View style={styles.resetContainer}>
-              <View style={styles.inputContainer}>
+              <View style={[
+                styles.inputContainer,
+                { borderColor: focusedField === 'resetEmail' ? LOGIN_COLORS.primary : '#E0E0E0' }
+              ]}>
                 <MaterialCommunityIcons name="email-outline" size={20} color="#6B6B6B" style={styles.inputIcon} />
                 <TextInput
                   placeholder="Digite seu e-mail"
@@ -168,6 +182,8 @@ export default function Login({ navigation }: any) {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   style={styles.input}
+                  onFocus={() => setFocusedField('resetEmail')}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
               <Pressable
@@ -332,7 +348,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EEF1F4',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     borderRadius: 12,
     marginBottom: 12,
     paddingHorizontal: 16,
@@ -346,6 +364,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: '#2E2E2E',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
   },
   eyeButton: {
     padding: 8,

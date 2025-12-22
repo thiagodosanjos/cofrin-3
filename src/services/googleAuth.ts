@@ -1,7 +1,7 @@
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { auth } from "./firebase";
 import { createDefaultCategories } from "./categoryService";
 import { createDefaultAccount, getAllAccounts } from "./accountService";
