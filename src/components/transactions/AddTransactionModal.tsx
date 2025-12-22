@@ -437,6 +437,39 @@ export default function AddTransactionModal({
       return;
     }
 
+    // Validar limite do cartão de crédito
+    if (useCreditCard && creditCardId && type === 'despesa') {
+      const card = activeCards.find(c => c.id === creditCardId);
+      if (card) {
+        const currentUsed = card.currentUsed || 0;
+        const availableLimit = card.limit - currentUsed;
+        
+        // Calcular valor total da transação (incluindo parcelas se for parcelado)
+        const totalTransactionValue = recurrence !== 'none' && repetitions > 1 && recurrenceType === 'fixed' 
+          ? parsed * repetitions  // Se for fixa, multiplica pelo número de repetições
+          : parsed; // Se for parcelada ou única, usa o valor informado
+        
+        if (totalTransactionValue > availableLimit) {
+          showAlert(
+            'Limite Insuficiente',
+            `O cartão "${card.name}" não possui limite disponível suficiente.\n\nLimite disponível: ${formatCurrency(Math.round(availableLimit * 100).toString())}\nValor da transação: ${formatCurrency(Math.round(totalTransactionValue * 100).toString())}`,
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              { 
+                text: 'Alterar limite', 
+                style: 'default',
+                onPress: () => {
+                  onClose();
+                  navigation.navigate('CreditCards', { editCardId: creditCardId });
+                }
+              }
+            ]
+          );
+          return;
+        }
+      }
+    }
+
     // Validar fatura de cartão de crédito - verificar se está paga
     if (useCreditCard && creditCardId && user?.uid) {
       const card = activeCards.find(c => c.id === creditCardId);

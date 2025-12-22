@@ -317,21 +317,16 @@ export async function deactivateGoal(goalId: string): Promise<void> {
 
 // Deletar meta
 export async function deleteGoal(goalId: string, userId: string): Promise<void> {
-  // Buscar a meta para verificar se está concluída
+  // Buscar a meta para verificar se existe
   const goal = await getGoalById(goalId);
   if (!goal) throw new Error('Meta não encontrada');
 
   // Importar funções de transação
-  const { deleteTransactionsByGoal, removeGoalIdFromTransactions } = await import('./transactionService');
+  const { deleteTransactionsByGoal } = await import('./transactionService');
 
-  if (goal.completedAt) {
-    // REGRA 2: Meta concluída - manter transações mas remover goalId
-    // Isso permite que o usuário exclua as transações posteriormente se quiser
-    await removeGoalIdFromTransactions(userId, goalId);
-  } else {
-    // REGRA 1 e 3: Meta não concluída (em andamento) - excluir todas as transações
-    await deleteTransactionsByGoal(userId, goalId);
-  }
+  // SEMPRE excluir as transações associadas à meta
+  // Isso reverte o saldo das contas para o estado anterior aos aportes
+  await deleteTransactionsByGoal(userId, goalId);
 
   // Deletar a meta
   const docRef = doc(db, COLLECTIONS.GOALS, goalId);

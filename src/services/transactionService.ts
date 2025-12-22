@@ -687,10 +687,10 @@ export async function deleteTransaction(transaction: Transaction): Promise<void>
   const docRef = doc(db, COLLECTIONS.TRANSACTIONS, transaction.id);
   await deleteDoc(docRef);
 
-  // Reverter saldos apenas se status era 'completed' e não era cartão de crédito
-  if (!transaction.creditCardId && transaction.status === 'completed') {
+  // Reverter saldos apenas se status era 'completed', não era cartão de crédito E tem accountId
+  if (!transaction.creditCardId && transaction.status === 'completed' && transaction.accountId) {
     await updateBalancesForTransaction(
-      { ...transaction, type: transaction.type },
+      { ...transaction, type: transaction.type, accountId: transaction.accountId },
       true
     );
   }

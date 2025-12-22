@@ -69,6 +69,12 @@ export default function AddToGoalModal({ visible, onClose, onSave, goal, progres
       return;
     }
 
+    // Verificar se o valor excede o restante da meta
+    if (value > remaining) {
+      setError(`Valor máximo permitido: ${formatCurrencyBRL(remaining)}`);
+      return;
+    }
+
     if (selectedAccount && value > selectedAccount.balance) {
       setError(`Saldo insuficiente. Disponível: ${formatCurrencyBRL(selectedAccount.balance)}`);
       return;
@@ -101,8 +107,8 @@ export default function AddToGoalModal({ visible, onClose, onSave, goal, progres
     setAmount(formatCurrency(value));
   };
 
-  // Sugestões rápidas de valores
-  const suggestions = [50, 100, 200, 500].filter(v => v <= remaining + 100);
+  // Sugestões rápidas de valores - filtrar apenas valores até o restante
+  const suggestions = [50, 100, 200, 500].filter(v => v <= remaining);
 
   // Verificar se meta está completa
   const isGoalComplete = goal.currentAmount >= goal.targetAmount;

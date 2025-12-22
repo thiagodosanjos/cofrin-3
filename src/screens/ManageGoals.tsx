@@ -11,6 +11,7 @@ import { useTransactionRefresh } from '../contexts/transactionRefreshContext';
 import MainLayout from '../components/MainLayout';
 import SimpleHeader from '../components/SimpleHeader';
 import CreateGoalModal from '../components/CreateGoalModal';
+import { FOOTER_HEIGHT } from '../components/AppFooter';
 import AddToGoalModal from '../components/AddToGoalModal';
 import { spacing, borderRadius, getShadow } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
@@ -402,8 +403,8 @@ export default function ManageGoals() {
                 <MaterialCommunityIcons name="trophy-outline" size={20} color={colors.primary} />
               </View>
               <View style={styles.manageButtonText}>
-                <Text style={[styles.manageButtonTitle, { color: colors.text }]}>Meus Objetivos</Text>
-                <Text style={[styles.manageButtonDesc, { color: colors.textMuted }]}>Configurar e editar suas metas</Text>
+                <Text style={[styles.manageButtonTitle, { color: colors.text }]}>Metas concluídas</Text>
+                <Text style={[styles.manageButtonDesc, { color: colors.textMuted }]}>Veja suas metas concluídas</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textMuted} />
             </Pressable>
@@ -430,8 +431,8 @@ export default function ManageGoals() {
         </View>
       </ScrollView>
 
-      {/* Botão fixo colado ao footer */}
-      <View style={[styles.addGoalFixedContainer, { paddingBottom: Math.max(insets.bottom, 8) + 12 }]}>
+      {/* Botão fixo acima do footer */}
+      <View style={[styles.addGoalFixedContainer, { bottom: FOOTER_HEIGHT + Math.max(insets.bottom, 8) + 24 }]}>
         <Pressable
           onPress={handleCreateGoal}
           style={({ pressed }) => [
@@ -633,14 +634,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  addGoalButton: {
+  addGoalFixedContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingHorizontal: spacing.lg,
+  },
+  addGoalButtonFixed: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
   },
   addGoalButtonText: {
     color: '#fff',

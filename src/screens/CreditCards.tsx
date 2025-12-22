@@ -79,6 +79,20 @@ export default function CreditCards({ navigation }: any) {
     }
   }, [route.params?.openCreate, activeAccounts.length, loading]);
 
+  // Abrir modal de edição automaticamente se vier com editCardId
+  useEffect(() => {
+    if (route.params?.editCardId && activeCards.length > 0 && !loading) {
+      const cardToEdit = activeCards.find(c => c.id === route.params.editCardId);
+      if (cardToEdit) {
+        const timer = setTimeout(() => {
+          openEditModal(cardToEdit);
+          navigation.setParams({ editCardId: undefined });
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [route.params?.editCardId, activeCards.length, loading]);
+
   // Calcular total usado
   const totalUsed = activeCards.reduce((sum, card) => sum + (card.currentUsed || 0), 0);
 

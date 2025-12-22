@@ -10,6 +10,7 @@ import { useCompletedGoals } from '../hooks/useCompletedGoals';
 import { useTransactionRefresh } from '../contexts/transactionRefreshContext';
 import MainLayout from '../components/MainLayout';
 import SimpleHeader from '../components/SimpleHeader';
+import { FOOTER_HEIGHT } from '../components/AppFooter';
 import { spacing, borderRadius, getShadow } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
 import { Goal, Transaction } from '../types/firebase';
@@ -277,6 +278,22 @@ export default function MyGoals() {
           </View>
         </View>
       </ScrollView>
+
+      {/* FAB Voltar - moderno e discreto */}
+      <Pressable
+        onPress={() => navigation.goBack()}
+        style={({ pressed }) => [
+          styles.backFab,
+          { 
+            backgroundColor: colors.card,
+            bottom: FOOTER_HEIGHT + Math.max(insets.bottom, 8) + 24,
+            shadowColor: colors.text,
+          },
+          pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
+        ]}
+      >
+        <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
+      </Pressable>
     </MainLayout>
   );
 }
@@ -469,5 +486,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
     lineHeight: 20,
+  },
+  backFab: {
+    position: 'absolute',
+    right: spacing.lg,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });
