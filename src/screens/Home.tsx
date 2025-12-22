@@ -75,6 +75,22 @@ export default function Home() {
   // Determinar se ainda está carregando dados iniciais
   const isLoading = loadingTransactions || loadingAccounts || loadingCards;
 
+  // Retry automático para novos usuários (dados iniciais podem estar sendo criados)
+  const [retryCount, setRetryCount] = useState(0);
+  useEffect(() => {
+    // Se terminou de carregar, contas estão vazias e ainda não tentamos retry
+    if (!loadingAccounts && accounts.length === 0 && retryCount < 3) {
+      const timer = setTimeout(() => {
+        console.log(`Retry ${retryCount + 1}/3: Recarregando dados...`);
+        refreshAccounts();
+        refresh();
+        refreshCreditCards();
+        setRetryCount(prev => prev + 1);
+      }, 1000); // Espera 1 segundo antes de tentar novamente
+      return () => clearTimeout(timer);
+    }
+  }, [loadingAccounts, accounts.length, retryCount]);
+
   // Estado do modal de criação de meta
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showAddToGoalModal, setShowAddToGoalModal] = useState(false);
