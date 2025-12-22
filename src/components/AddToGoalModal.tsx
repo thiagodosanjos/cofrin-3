@@ -9,6 +9,7 @@ import {
     Platform,
     ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -16,7 +17,6 @@ import { useAppTheme } from '../contexts/themeContext';
 import { spacing, borderRadius } from '../theme';
 import { Goal, Account } from '../types/firebase';
 import { formatCurrencyBRL } from '../utils/format';
-import { getModalContainerStyle } from '../utils/modalLayout';
 
 interface Props {
   visible: boolean;
@@ -107,33 +107,35 @@ export default function AddToGoalModal({ visible, onClose, onSave, goal, progres
   // Verificar se meta está completa
   const isGoalComplete = goal.currentAmount >= goal.targetAmount;
 
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      transparent
+      transparent={false}
+      statusBarTranslucent
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
+        style={{ flex: 1 }}
       >
-        <Pressable style={styles.backdrop} onPress={handleClose} />
-        
-        <View style={Platform.OS === 'web' ? styles.centeredContainer : undefined}>
-        <View style={[getModalContainerStyle(colors), { backgroundColor: colors.card }]}> 
+        <View style={[styles.fullscreenModal, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Adicionar à meta
-            </Text>
-            <Pressable onPress={handleClose} hitSlop={8}>
-              <MaterialCommunityIcons name="close" size={24} color={colors.textMuted} />
+          <View style={[styles.fullscreenHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.fullscreenTitle, { color: colors.text }]}>Adicionar à meta</Text>
+            <Pressable onPress={handleClose} hitSlop={8} style={styles.closeButton}>
+              <MaterialCommunityIcons name="close" size={20} color={colors.textMuted} />
             </Pressable>
           </View>
 
-          {/* Info da meta */}
-          <View style={[styles.goalInfo, { backgroundColor: colors.bg }]}>
+          <ScrollView 
+            contentContainerStyle={[styles.modalBody, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Info da meta */}
+            <View style={[styles.goalInfo, { backgroundColor: colors.card }]}>
             <View style={styles.goalHeader}>
               <MaterialCommunityIcons 
                 name={(goal.icon as any) || 'flag-checkered'} 
@@ -289,7 +291,7 @@ export default function AddToGoalModal({ visible, onClose, onSave, goal, progres
               </Pressable>
             )}
           </View>
-        </View>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -297,33 +299,31 @@ export default function AddToGoalModal({ visible, onClose, onSave, goal, progres
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  fullscreenModal: {
     flex: 1,
-    justifyContent: 'flex-end',
+    overflow: 'hidden',
   },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  centeredContainer: {
-    width: '100%',
-    maxWidth: 500,
-    alignSelf: 'center',
-  },
-  container: {
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    padding: spacing.lg,
-  },
-  header: {
+  fullscreenHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
   },
-  title: {
+  fullscreenTitle: {
     fontSize: 20,
     fontWeight: '700',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
+    padding: spacing.lg,
   },
   goalInfo: {
     padding: spacing.md,

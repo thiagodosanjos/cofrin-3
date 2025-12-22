@@ -426,22 +426,24 @@ export default function ManageGoals() {
                 </Text>
               </View>
             )}
-
-            {/* Botão para criar nova meta - por último */}
-            <Pressable
-              onPress={handleCreateGoal}
-              style={({ pressed }) => [
-                styles.addGoalButton,
-                { backgroundColor: colors.primary },
-                pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-              ]}
-            >
-              <MaterialCommunityIcons name="plus" size={20} color="#fff" />
-              <Text style={styles.addGoalButtonText}>Criar nova meta</Text>
-            </Pressable>
           </View>
         </View>
       </ScrollView>
+
+      {/* Botão fixo colado ao footer */}
+      <View style={[styles.addGoalFixedContainer, { paddingBottom: Math.max(insets.bottom, 8) + 12 }]}>
+        <Pressable
+          onPress={handleCreateGoal}
+          style={({ pressed }) => [
+            styles.addGoalButtonFixed,
+            { backgroundColor: colors.primary },
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+          ]}
+        >
+          <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+          <Text style={styles.addGoalButtonText}>Criar nova meta</Text>
+        </Pressable>
+      </View>
 
       {/* Modais */}
       <CreateGoalModal
