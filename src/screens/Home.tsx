@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../contexts/authContext";
 import { useAppTheme } from "../contexts/themeContext";
-import { useTransactions, useExpensesByCategory, useIncomesByCategory, useMonthReport } from "../hooks/useFirebaseTransactions";
+import { useTransactions, useExpensesByCategory, useIncomesByCategory, useMonthReport, usePendingFutureTransactions } from "../hooks/useFirebaseTransactions";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCreditCards } from "../hooks/useCreditCards";
 import { useGoal } from "../hooks/useGoal";
@@ -13,6 +13,7 @@ import { useEffect, useMemo, useCallback, useState } from "react";
 import MainLayout from "../components/MainLayout";
 import HomeShimmer from "../components/home/HomeShimmer";
 import AccountsCard from "../components/home/AccountsCard";
+import UpcomingFlowsCard from "../components/home/UpcomingFlowsCard";
 import TransactionsByCategoryCard from "../components/TransactionsByCategoryCard";
 import CreditCardsCard from "../components/home/CreditCardsCard";
 import GoalCard from "../components/home/GoalCard";
@@ -43,13 +44,20 @@ export default function Home() {
   const { 
     totalIncome, 
     totalExpense,
-    balance,
     refresh,
     loading: loadingTransactions,
   } = useTransactions({ 
     month: currentMonth, 
     year: currentYear 
   });
+
+  // Hook para transações pendentes futuras (para o card de próximos fluxos)
+  const {
+    incomeTransactions: pendingIncomes,
+    expenseTransactions: pendingExpenses,
+    loading: loadingPending,
+    refresh: refreshPending,
+  } = usePendingFutureTransactions();
 
   // Hook de relatório do mês (inclui despesas de cartão corretamente)
   const { report } = useMonthReport(currentMonth, currentYear);
@@ -220,6 +228,7 @@ export default function Home() {
       refresh();
       refreshAccounts();
       refreshCreditCards();
+      refreshPending();
     }
   }, [refreshKey]);
 
@@ -229,6 +238,7 @@ export default function Home() {
       refresh();
       refreshAccounts();
       refreshCreditCards();
+      refreshPending();
     }, [])
   );
 
@@ -255,6 +265,14 @@ export default function Home() {
                   username={userName}
                   onAccountPress={handleAccountPress}
                   onAddPress={() => navigation.navigate('ConfigureAccounts')}
+                />
+
+                <View style={{ height: 24 }} />
+
+                <UpcomingFlowsCard
+                  incomeTransactions={pendingIncomes}
+                  expenseTransactions={pendingExpenses}
+                  loading={loadingPending}
                 />
 
             <View style={{ height: 24 }} />

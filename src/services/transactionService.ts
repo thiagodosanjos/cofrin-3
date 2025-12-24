@@ -235,6 +235,37 @@ export async function getTransactionsByPeriod(
   return transactions.sort((a, b) => a.date.toMillis() - b.date.toMillis());
 }
 
+// Buscar transações pendentes futuras (a partir de hoje)
+// Nota: filtramos status e data no código para evitar necessidade de índice composto
+export async function getPendingFutureTransactions(
+  userId: string
+): Promise<Transaction[]> {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTodayMs = startOfToday.getTime();
+
+  // Buscar apenas por status=pending (não requer índice composto com userId)
+  const q = query(
+    transactionsRef,
+    where('userId', '==', userId),
+    where('status', '==', 'pending')
+  );
+
+  const snapshot = await getDocs(q);
+  const transactions = snapshot.docs
+    .map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }))
+    .filter(tx => {
+      // Filtrar transações com data >= hoje
+      const txDate = (tx as Transaction).date?.toDate?.();
+      return txDate && txDate.getTime() >= startOfTodayMs;
+    }) as Transaction[];
+  
+  return transactions.sort((a, b) => a.date.toMillis() - b.date.toMillis());
+}
+
 // Buscar transações por tipo
 export async function getTransactionsByType(
   userId: string,

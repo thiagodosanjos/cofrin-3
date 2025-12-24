@@ -498,3 +498,60 @@ export function useMonthReport(month: number, year: number) {
     refresh: loadReport,
   };
 }
+
+// Hook para transações pendentes futuras (para próximos fluxos)
+export function usePendingFutureTransactions() {
+  const { user } = useAuth();
+  const { refreshKey } = useTransactionRefresh();
+  const [incomeTransactions, setIncomeTransactions] = useState<Transaction[]>([]);
+  const [expenseTransactions, setExpenseTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadTransactions = useCallback(async () => {
+    if (!user?.uid) {
+      setIncomeTransactions([]);
+      setExpenseTransactions([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await transactionService.getPendingFutureTransactions(user.uid);
+      
+      // Separar por tipo
+      const incomes = data.filter(t => t.type === 'income');
+      const expenses = data.filter(t => t.type === 'expense');
+      
+      setIncomeTransactions(incomes);
+      setExpenseTransactions(expenses);
+    } catch (err) {
+      console.error('Erro ao carregar transações pendentes:', err);
+      setError('Erro ao carregar transações pendentes');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [loadTransactions]);
+
+  // Recarregar quando ocorrerem mudanças globais
+  useEffect(() => {
+    if (refreshKey > 0) {
+      loadTransactions();
+    }
+  }, [refreshKey, loadTransactions]);
+
+  return {
+    incomeTransactions,
+    expenseTransactions,
+    loading,
+    error,
+    refresh: loadTransactions,
+  };
+}
