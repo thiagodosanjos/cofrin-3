@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { login, sendPasswordReset } from "../services/auth";
 import { useGoogleAuth } from "../services/googleAuth";
+import { checkNetworkConnection, reconnectFirestore } from "../utils/networkUtils";
 
 // Design System Roxo Premium
 const LOGIN_COLORS = {
@@ -24,13 +25,29 @@ export default function Login({ navigation }: any) {
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
 
   const { request, promptAsync, isAuthenticating: googleLoading } = useGoogleAuth();
 
   const loading = emailLoading || googleLoading;
 
+  // Verificar conexão ao montar e quando houver erro de rede
+  useEffect(() => {
+    checkNetworkConnection().then(setIsOnline);
+  }, []);
+
   async function handleLogin() {
     setError(null);
+    
+    // Verifica conexão antes de tentar login
+    const connected = await checkNetworkConnection();
+    setIsOnline(connected);
+    
+    if (!connected) {
+      setError("Sem conexão com a internet. Verifique sua conexão e tente novamente.");
+      return;
+    }
+    
     setEmailLoading(true);
     try {
       await login(email.trim(), password);
@@ -48,6 +65,14 @@ export default function Login({ navigation }: any) {
         message = "Usuário ou senha inválidos. Tente novamente ou clique em 'Esqueci minha senha'.";
       } else if (code.includes("auth/network-request-failed")) {
         message = "Sem conexão. Verifique sua internet e tente novamente.";
+        // Tenta reconectar o Firestore para a próxima tentativa
+        setIsOnline(false);
+        try {
+          await reconnectFirestore();
+          setIsOnline(true);
+        } catch (e) {
+          // Ignora erro de reconexão
+        }
       }
 
       setError(message);
@@ -110,6 +135,14 @@ export default function Login({ navigation }: any) {
 
         {/* Card de Login */}
         <View style={styles.card}>
+          {/* Banner de sem conexão */}
+          {!isOnline && (
+            <View style={styles.offlineBanner}>
+              <MaterialCommunityIcons name="wifi-off" size={18} color="#fff" />
+              <Text style={styles.offlineBannerText}>Sem conexão com a internet</Text>
+            </View>
+          )}
+          
           <Text style={styles.cardTitle}>Bem-vindo de volta!</Text>
 
           <View style={[
@@ -522,5 +555,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B6B6B',
     textAlign: 'center',
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#EF4444',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  offlineBannerText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
