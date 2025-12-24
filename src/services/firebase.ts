@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { initializeAuth, getReactNativePersistence, getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
@@ -25,6 +25,20 @@ export const auth = Platform.OS === 'web'
     });
 
 export const db = getFirestore(app);
+
+// Habilitar persistência offline do Firestore
+// Isso faz cache local dos dados, reduzindo queries ao servidor
+if (Platform.OS === 'web') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      // Múltiplas abas abertas, persistência só funciona em uma
+      console.log('Firestore persistence failed: multiple tabs open');
+    } else if (err.code === 'unimplemented') {
+      // Browser não suporta
+      console.log('Firestore persistence not available');
+    }
+  });
+}
 
 // Nomes das coleções
 export const COLLECTIONS = {
