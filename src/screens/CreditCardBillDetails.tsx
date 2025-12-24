@@ -349,13 +349,13 @@ export default function CreditCardBillDetails() {
 
         {/* Card do resumo da fatura */}
         <View style={[styles.billCard, { backgroundColor: colors.card, ...getShadow(colors) }]}>
+          {/* Header com ícone e informações principais */}
           <View style={styles.billHeader}>
-            <MaterialCommunityIcons name="credit-card" size={32} color={colors.primary} />
+            <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <MaterialCommunityIcons name="credit-card" size={28} color={colors.primary} />
+            </View>
             <View style={styles.billTitleContainer}>
               <Text style={[styles.billTitle, { color: colors.text }]}>{billTitle}</Text>
-              {bill?.dueDate && (
-                <Text style={[styles.dueDateText, { color: colors.textMuted }]}>Vencimento: {bill.dueDate.toDate().toLocaleDateString('pt-BR')}</Text>
-              )}
               {bill?.isPaid ? (
                 <View style={[styles.statusBadge, { backgroundColor: colors.successBg }]}>
                   <MaterialCommunityIcons name="check-circle" size={14} color={colors.success} />
@@ -369,27 +369,39 @@ export default function CreditCardBillDetails() {
               )}
             </View>
           </View>
-          
-          <View style={styles.billAmount}>
-            <Text style={[styles.totalLabel, { color: colors.textMuted }]}>Total da Fatura</Text>
-            <Text style={[styles.totalValue, { color: colors.text }]}>
-              {formatCurrencyBRL(summary.total)}
-            </Text>
+
+          {/* Datas de fechamento e vencimento */}
+          <View style={[styles.datesRow, { borderBottomColor: colors.border }]}>
+            <View style={styles.dateItem}>
+              <MaterialCommunityIcons name="calendar-lock" size={18} color={colors.textMuted} />
+              <View style={styles.dateInfo}>
+                <Text style={[styles.dateLabel, { color: colors.textMuted }]}>Fechamento</Text>
+                <Text style={[styles.dateValue, { color: colors.text }]}>
+                  Dia {bill?.creditCard?.closingDay || '-'}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.dateSeparator, { backgroundColor: colors.border }]} />
+            <View style={styles.dateItem}>
+              <MaterialCommunityIcons name="calendar-clock" size={18} color={colors.textMuted} />
+              <View style={styles.dateInfo}>
+                <Text style={[styles.dateLabel, { color: colors.textMuted }]}>Vencimento</Text>
+                <Text style={[styles.dateValue, { color: colors.text }]}>
+                  {bill?.dueDate ? bill.dueDate.toDate().toLocaleDateString('pt-BR') : '-'}
+                </Text>
+              </View>
+            </View>
           </View>
           
-          <View style={[styles.summaryRow, { borderTopColor: colors.border }]}>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Despesas</Text>
-              <Text style={[styles.summaryValue, { color: colors.expense }]}>
-                {formatCurrencyBRL(-summary.expenses)}
-              </Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Estornos</Text>
-              <Text style={[styles.summaryValue, { color: colors.income }]}>
-                {formatCurrencyBRL(summary.refunds)}
-              </Text>
-            </View>
+          {/* Valor total da fatura */}
+          <View style={styles.billAmount}>
+            <Text style={[styles.totalLabel, { color: colors.textMuted }]}>Total da Fatura</Text>
+            <Text style={[
+              styles.totalValue, 
+              { color: summary.total > 0 ? colors.expense : colors.success }
+            ]}>
+              {formatCurrencyBRL(summary.total)}
+            </Text>
           </View>
           
           {/* Botão de pagar fatura */}
@@ -691,6 +703,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
+  cardIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   billTitleContainer: {
     marginLeft: spacing.md,
     flex: 1,
@@ -698,6 +717,37 @@ const styles = StyleSheet.create({
   billTitle: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  datesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
+    borderBottomWidth: 1,
+  },
+  dateItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  dateInfo: {
+    flex: 1,
+  },
+  dateLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  dateValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  dateSeparator: {
+    width: 1,
+    height: 32,
+    marginHorizontal: spacing.md,
   },
   statusBadge: {
     flexDirection: 'row',
