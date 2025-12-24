@@ -107,11 +107,12 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onMa
             onPress={onAddPress}
             style={({ pressed }) => [
               styles.addButton,
-              { backgroundColor: colors.grayLight, borderColor: colors.border },
+              { backgroundColor: colors.primaryBg },
               pressed && { opacity: 0.7 }
             ]}
           >
-            <Text style={[styles.addButtonText, { color: colors.textSecondary }]}>Adicionar progresso</Text>
+            <MaterialCommunityIcons name="plus" size={16} color={colors.primary} />
+            <Text style={[styles.addButtonText, { color: colors.primary }]}>Adicionar progresso</Text>
           </Pressable>
         )}
 
@@ -119,12 +120,13 @@ export default function GoalCard({ goal, progressPercentage, onCreatePress, onMa
           onPress={onManagePress}
           style={({ pressed }) => [
             styles.manageButton,
-            { backgroundColor: primary },
+            { backgroundColor: colors.primaryBg, borderWidth: 1, borderColor: colors.primary },
             pressed && { opacity: 0.85 }
           ]}
         >
-          <MaterialCommunityIcons name="view-list" size={16} color="#fff" />
-          <Text style={styles.manageButtonText}>Acompanhar minhas metas</Text>
+          
+          <Text style={[styles.manageButtonText, { color: colors.primary }]}>Acompanhar minhas metas</Text>
+          <MaterialCommunityIcons name="arrow-right" size={16} color={colors.primary} />
         </Pressable>
       </View>
     </View>
@@ -214,11 +216,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
   },
   addButtonText: {
     fontSize: 13,
@@ -234,7 +238,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   manageButtonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
   },

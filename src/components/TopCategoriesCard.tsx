@@ -140,45 +140,9 @@ export default function TopCategoriesCard({
         <Text style={styles.headerTitle}>Resumo por categoria</Text>
       </View>
 
-      {/* Cards internos lado a lado */}
-      <View style={styles.cardsRow}>
-        {/* Card Maior Gasto */}
-        {topExpense && (
-          <View style={[styles.innerCard, styles.expenseCard]}>
-            <View style={styles.innerCardHeader}>
-              <View style={[styles.labelIconCircle, { backgroundColor: COLORS.expenseAccent }]}>
-                <MaterialCommunityIcons name="arrow-down" size={10} color="#FFFFFF" />
-              </View>
-              <Text style={[styles.labelText, { color: COLORS.expenseAccent }]}>
-                MAIOR GASTO
-              </Text>
-            </View>
-
-            <View style={styles.categoryRow}>
-              <View style={styles.categoryIconBox}>
-                <MaterialCommunityIcons
-                  name={(topExpense.categoryIcon as any) || 'dots-horizontal'}
-                  size={18}
-                  color={COLORS.categoryText}
-                />
-              </View>
-              <Text style={styles.categoryName} numberOfLines={1}>
-                {topExpense.categoryName}
-              </Text>
-            </View>
-
-            <View style={styles.valuesContainer}>
-              <Text style={[styles.amountText, { color: COLORS.expenseAccent }]}>
-                {formatCurrencyBRL(topExpense.total)}
-              </Text>
-              <Text style={styles.percentageText}>
-                {topExpense.percentage.toFixed(0)}% dos gastos
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Card Maior Receita */}
+      {/* Cards internos em coluna - Receita primeiro */}
+      <View style={styles.cardsColumn}>
+        {/* Card Maior Receita - Primeiro */}
         {topIncome && (
           <View style={[styles.innerCard, styles.incomeCard]}>
             <View style={styles.innerCardHeader}>
@@ -201,32 +165,55 @@ export default function TopCategoriesCard({
               <Text style={styles.categoryName} numberOfLines={1}>
                 {topIncome.categoryName}
               </Text>
-            </View>
-
-            <View style={styles.valuesContainer}>
-              <Text style={[styles.amountText, { color: COLORS.incomeAccent }]}>
+              <Text style={[styles.amountTextInline, { color: COLORS.incomeAccent }]}>
                 {formatCurrencyBRL(topIncome.total)}
               </Text>
-              <Text style={styles.percentageText}>
-                {topIncome.percentage.toFixed(0)}% das receitas
+            </View>
+          </View>
+        )}
+
+        {/* Card Maior Gasto - Segundo */}
+        {topExpense && (
+          <View style={[styles.innerCard, styles.expenseCard]}>
+            <View style={styles.innerCardHeader}>
+              <View style={[styles.labelIconCircle, { backgroundColor: COLORS.expenseAccent }]}>
+                <MaterialCommunityIcons name="arrow-down" size={10} color="#FFFFFF" />
+              </View>
+              <Text style={[styles.labelText, { color: COLORS.expenseAccent }]}>
+                MAIOR GASTO
+              </Text>
+            </View>
+
+            <View style={styles.categoryRow}>
+              <View style={styles.categoryIconBox}>
+                <MaterialCommunityIcons
+                  name={(topExpense.categoryIcon as any) || 'dots-horizontal'}
+                  size={18}
+                  color={COLORS.categoryText}
+                />
+              </View>
+              <Text style={styles.categoryName} numberOfLines={1}>
+                {topExpense.categoryName}
+              </Text>
+              <Text style={[styles.amountTextInline, { color: COLORS.expenseAccent }]}>
+                {formatCurrencyBRL(topExpense.total)}
               </Text>
             </View>
           </View>
         )}
       </View>
 
-      {/* Botão CTA */}
+      {/* Botão CTA - Menos chamativo */}
       <Pressable
         onPress={handlePressDetails}
         style={({ pressed }) => [
           styles.ctaButton,
-          { backgroundColor: colors.primary },
-          SHADOWS.button,
+          { backgroundColor: colors.primaryBg, borderWidth: 1, borderColor: colors.primary },
           pressed && styles.ctaButtonPressed,
         ]}
       >
-        <Text style={styles.ctaButtonText}>Ver mais detalhes</Text>
-        <MaterialCommunityIcons name="arrow-right" size={16} color={COLORS.buttonText} />
+        <Text style={[styles.ctaButtonText, { color: colors.primary }]}>Ver mais detalhes</Text>
+        <MaterialCommunityIcons name="arrow-right" size={16} color={colors.primary} />
       </Pressable>
     </View>
   );
@@ -270,17 +257,13 @@ const styles = StyleSheet.create({
   // ====================================================
   // CARDS INTERNOS
   // ====================================================
-  cardsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 18,
+  cardsColumn: {
+    gap: 10,
+    marginBottom: 16,
   },
   innerCard: {
-    flex: 1,
-    borderRadius: 18,
-    padding: 14,
-    minHeight: 120,
-    justifyContent: 'space-between',
+    borderRadius: 14,
+    padding: 12,
   },
   expenseCard: {
     backgroundColor: COLORS.expenseBg,
@@ -317,8 +300,7 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: 10,
   },
   categoryIconBox: {
     width: 32,
@@ -334,28 +316,17 @@ const styles = StyleSheet.create({
     color: COLORS.categoryText,
     flex: 1,
   },
-
-  // ====================================================
-  // VALORES
-  // ====================================================
-  valuesContainer: {
-    gap: 2,
-  },
-  amountText: {
-    fontSize: 20,
+  amountTextInline: {
+    fontSize: 16,
     fontWeight: '700',
-  },
-  percentageText: {
-    fontSize: 12,
-    color: COLORS.subtleText,
   },
 
   // ====================================================
   // BOTÃO CTA
   // ====================================================
   ctaButton: {
-    height: 52,
-    borderRadius: 16,
+    height: 48,
+    borderRadius: 14,
     marginTop: 4,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -363,13 +334,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   ctaButtonPressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.99 }],
+    opacity: 0.85,
   },
   ctaButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.buttonText,
   },
 
   // ====================================================
