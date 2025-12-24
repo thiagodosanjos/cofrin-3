@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-    View,
-    StyleSheet,
-    ScrollView,
-    Platform,
-    Pressable,
-    Modal,
-    Dimensions,
-    Text,
-    TextInput,
-    ActivityIndicator
+  View,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  Pressable,
+  Modal,
+  Dimensions,
+  Text,
+  TextInput,
+  ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -210,8 +210,39 @@ export default function AddTransactionModal({
     return null;
   }, [type, accountId, useCreditCard, activeAccounts]);
   
+  // Handler para clicar no campo de descrição quando está desabilitado
+  const handleDescriptionPress = () => {
+    if (!hasAmount) {
+      const transactionTypeLabel = type === 'despesa' ? 'despesa' : type === 'receita' ? 'receita' : 'transferência';
+      showAlert(
+        'Atenção',
+        `Para lançar uma ${transactionTypeLabel}, você precisa preencher o valor primeiro.`,
+        [
+          {
+            text: 'OK',
+            style: 'default',
+            onPress: () => {
+              amountInputRef.current?.focus();
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  // Verificar se o valor foi preenchido (diferente de R$ 0,00)
+  const hasAmount = React.useMemo(() => {
+    const parsed = parseCurrency(amount);
+    return parsed > 0;
+  }, [amount]);
+
   // Verificar se pode confirmar
   const canConfirm = React.useMemo(() => {
+    // Valor e descrição devem estar preenchidos
+    if (!hasAmount || !description.trim()) {
+      return false;
+    }
+    
     if (type === 'transfer') {
       // Não permitir transferência para a mesma conta
       if (accountId && toAccountId && accountId === toAccountId) {
@@ -219,7 +250,7 @@ export default function AddTransactionModal({
       }
     }
     return true;
-  }, [type, accountId, toAccountId]);
+  }, [type, accountId, toAccountId, hasAmount, description]);
 
   // Filtrar categorias por tipo
   const filteredCategories = React.useMemo(() => {
@@ -1321,22 +1352,34 @@ export default function AddTransactionModal({
                       showsVerticalScrollIndicator={false}
                     >
                       {/* Descrição */}
-                  <View style={[styles.inputContainer, { backgroundColor: colors.card }, getShadow(colors)]}>
-                    <View style={[styles.fieldIcon, { backgroundColor: colors.primaryBg }]}>
-                      <MaterialCommunityIcons name="text" size={20} color={colors.primary} />
+                  <Pressable
+                    onPress={handleDescriptionPress}
+                    disabled={hasAmount}
+                    style={{ opacity: hasAmount ? 1 : 0.6 }}
+                  >
+                    <View style={[
+                      styles.inputContainer,
+                      { backgroundColor: colors.card },
+                      getShadow(colors)
+                    ]}>
+                      <View style={[styles.fieldIcon, { backgroundColor: hasAmount ? colors.primaryBg : colors.grayLight }]}>
+                        <MaterialCommunityIcons name="text" size={20} color={hasAmount ? colors.primary : colors.textMuted} />
+                      </View>
+                      <View style={styles.inputWrapper}>
+                        <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Descrição</Text>
+                        <TextInput
+                          value={description}
+                          onChangeText={setDescription}
+                          placeholder={hasAmount ? "Ex: Almoço, Salário..." : "Preencha o valor primeiro"}
+                          placeholderTextColor={colors.textMuted}
+                          style={[styles.textInput, { color: colors.text }]}
+                          maxLength={60}
+                          editable={hasAmount}
+                          pointerEvents={hasAmount ? 'auto' : 'none'}
+                        />
+                      </View>
                     </View>
-                    <View style={styles.inputWrapper}>
-                      <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Descrição</Text>
-                      <TextInput
-                        value={description}
-                        onChangeText={setDescription}
-                        placeholder="Ex: Almoço, Salário..."
-                        placeholderTextColor={colors.textMuted}
-                        style={[styles.textInput, { color: colors.text }]}
-                        maxLength={60}
-                      />
-                    </View>
-                  </View>
+                  </Pressable>
                   {/* Card de campos */}
                   <View style={[styles.fieldsCard, { backgroundColor: colors.card }, getShadow(colors)]}>
                     {/* Categoria - não mostrar para transferências ou transações de meta */}
