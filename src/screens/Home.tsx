@@ -11,7 +11,7 @@ import { useCreditCards } from "../hooks/useCreditCards";
 import { useGoal } from "../hooks/useGoal";
 import { useAllGoals } from "../hooks/useAllGoals";
 import { useTransactionRefresh } from "../contexts/transactionRefreshContext";
-import React, { useEffect, useMemo, useCallback, useState, lazy, Suspense } from "react";
+import React, { useEffect, useMemo, useCallback, useState, lazy, Suspense, useDeferredValue } from "react";
 import MainLayout from "../components/MainLayout";
 import HomeShimmer from "../components/home/HomeShimmer";
 import AccountsCard from "../components/home/AccountsCard";
@@ -91,6 +91,11 @@ export default function Home() {
   
   // Hook de todas as metas (para validar duplicatas)
   const { goals: allGoals, refresh: refreshAllGoals } = useAllGoals();
+
+  // Usar useDeferredValue para dados não críticos (evita bloquear UI)
+  const deferredCategoryExpenses = useDeferredValue(categoryExpenses);
+  const deferredCategoryIncomes = useDeferredValue(categoryIncomes);
+  const deferredGoal = useDeferredValue(goal);
 
   // Determinar se ainda está carregando dados iniciais
   const isLoading = loadingTransactions || loadingAccounts || loadingCards;
@@ -328,7 +333,7 @@ export default function Home() {
 
             {/* 4. Meta Financeira */}
             <GoalCard 
-              goal={goal}
+              goal={deferredGoal}
               progressPercentage={progressPercentage}
               onCreatePress={openGoalModal}
               onManagePress={navigateToManageGoals}
@@ -339,8 +344,8 @@ export default function Home() {
 
             {/* 5. Resumo por Categoria */}
             <TopCategoriesCard
-              expenses={categoryExpenses}
-              incomes={categoryIncomes}
+              expenses={deferredCategoryExpenses}
+              incomes={deferredCategoryIncomes}
               totalExpenses={report?.expense || totalExpense}
               totalIncomes={report?.income || totalIncome}
             />
