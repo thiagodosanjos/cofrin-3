@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import ResponsiveText from '../components/ResponsiveText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/authContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -29,10 +30,10 @@ function StatCard({ title, value, icon, iconBg, iconColor, subtitle, colors }: S
         <MaterialCommunityIcons name={icon as any} size={20} color={iconColor} />
       </View>
       <View style={styles.statContent}>
-        <Text style={[styles.statTitle, { color: colors.textMuted }]}>{title}</Text>
-        <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+        <ResponsiveText style={[styles.statTitle, { color: colors.textMuted }]} variant="caption">{title}</ResponsiveText>
+        <ResponsiveText style={[styles.statValue, { color: colors.text }]} variant="h3">{value}</ResponsiveText>
         {subtitle && (
-          <Text style={[styles.statSubtitle, { color: colors.textMuted }]}>{subtitle}</Text>
+          <ResponsiveText style={[styles.statSubtitle, { color: colors.textMuted }]} variant="body">{subtitle}</ResponsiveText>
         )}
       </View>
     </View>

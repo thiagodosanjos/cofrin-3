@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Platform, ScrollView } from "react-native";
+import useResponsiveFont from '../hooks/useResponsiveFont';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { login, sendPasswordReset } from "../services/auth";
@@ -30,6 +31,12 @@ export default function Login({ navigation }: any) {
   const { request, promptAsync, isAuthenticating: googleLoading } = useGoogleAuth();
 
   const loading = emailLoading || googleLoading;
+
+  const { getStyle } = useResponsiveFont();
+
+  const appNameStyle = getStyle('h1');
+  const taglineStyle = getStyle('body');
+  const cardTitleStyle = getStyle('h3');
 
   // Verificar conexão ao montar e quando houver erro de rede
   useEffect(() => {
@@ -127,8 +134,8 @@ export default function Login({ navigation }: any) {
           <View style={styles.iconContainer}>
             <MaterialCommunityIcons name="piggy-bank" size={64} color="#fff" />
           </View>
-          <Text style={styles.appName}>Cofrin</Text>
-          <Text style={styles.tagline}>
+          <Text style={[styles.appName, appNameStyle]}>Cofrin</Text>
+          <Text style={[styles.tagline, taglineStyle]}>
             Controle financeiro pessoal
           </Text>
         </View>
@@ -143,7 +150,7 @@ export default function Login({ navigation }: any) {
             </View>
           )}
           
-          <Text style={styles.cardTitle}>Bem-vindo de volta!</Text>
+          <Text style={[styles.cardTitle, cardTitleStyle]}>Bem-vindo de volta!</Text>
 
           <View style={[
             styles.inputContainer,
@@ -400,7 +407,8 @@ const styles = StyleSheet.create({
     color: '#2E2E2E',
     ...Platform.select({
       web: {
-        outlineStyle: 'none',
+        // web-specific outline removal removed to satisfy TypeScript TextStyle
+        // use CSS in web/styles.css if you need to adjust focus outlines
       },
     }),
   },

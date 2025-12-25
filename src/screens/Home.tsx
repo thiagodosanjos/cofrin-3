@@ -15,7 +15,7 @@ import React, { useEffect, useMemo, useCallback, useState, lazy, Suspense, useDe
 import MainLayout from "../components/MainLayout";
 import HomeShimmer from "../components/home/HomeShimmer";
 import AccountsCard from "../components/home/AccountsCard";
-import UpcomingFlowsCard from "../components/home/UpcomingFlowsCard";
+import { UpcomingFlowsCard } from "../components/home";
 import TopCategoriesCard from "../components/TopCategoriesCard";
 import CreditCardsCard from "../components/home/CreditCardsCard";
 import GoalCard from "../components/home/GoalCard";

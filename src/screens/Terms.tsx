@@ -23,9 +23,9 @@ export default function Terms({ navigation }: any) {
         <View style={styles.iconContainer}>
           <MaterialCommunityIcons name="piggy-bank" size={56} color="#fff" />
         </View>
-        <Text style={styles.appName}>Cofrin</Text>
-        <Text style={styles.tagline}>Controle financeiro pessoal</Text>
-        <Text style={styles.headerTitle}>Termos de Uso</Text>
+        <ResponsiveText style={styles.appName} variant="h1">Cofrin</ResponsiveText>
+        <ResponsiveText style={styles.tagline} variant="body">Controle financeiro pessoal</ResponsiveText>
+        <ResponsiveText style={styles.headerTitle} variant="h3">Termos de Uso</ResponsiveText>
       </View>
 
       {/* Content */}

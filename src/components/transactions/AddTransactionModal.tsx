@@ -604,7 +604,7 @@ export default function AddTransactionModal({
           data.accountId = accountId;
           // Se está editando e removendo cartão, definir como null
           if (isEditMode && editTransaction?.creditCardId) {
-            data.creditCardId = null;
+            data.creditCardId = undefined;
           }
         }
 
@@ -1638,7 +1638,7 @@ export default function AddTransactionModal({
                       label="Repetir"
                       value={RECURRENCE_OPTIONS.find((r) => r.value === recurrence)?.label || 'Não repetir'}
                       icon="repeat"
-                      onPress={(!isGoalTransaction && !isMetaCategoryTransaction) ? () => setActivePicker('recurrence') : undefined}
+                      onPress={(!isGoalTransaction && !isMetaCategoryTransaction) ? () => setActivePicker('recurrence') : () => {}}
                     />
                     {/* Tipo de recorrência - só aparece se recorrência != none */}
                     {recurrence !== 'none' && (

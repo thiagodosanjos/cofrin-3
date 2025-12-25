@@ -645,8 +645,8 @@ export async function updateTransaction(
 
     // Se está removendo o cartão explicitamente (mudando para conta)
     if (data.creditCardId === null || data.creditCardId === '') {
-      updateData.creditCardId = null;
-      updateData.creditCardName = null;
+      updateData.creditCardId = null as any;
+      updateData.creditCardName = null as any;
     }
 
     // Remover campos undefined (Firestore não aceita undefined)

@@ -9,6 +9,7 @@ import {
     Platform,
     ScrollView,
 } from "react-native";
+import useResponsiveFont from '../hooks/useResponsiveFont';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { register } from "../services/auth";
@@ -28,6 +29,11 @@ export default function Register({ navigation }: any) {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const { getStyle } = useResponsiveFont();
+  const appNameStyle = getStyle('h1');
+  const taglineStyle = getStyle('body');
+  const cardTitleStyle = getStyle('h3');
 
   function validateEmail(email: string) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -94,15 +100,15 @@ export default function Register({ navigation }: any) {
           <View style={styles.iconContainer}>
             <MaterialCommunityIcons name="piggy-bank" size={64} color="#fff" />
           </View>
-          <Text style={styles.appName}>Criar Conta</Text>
-          <Text style={styles.tagline}>
+            <Text style={[styles.appName, appNameStyle]}>Criar Conta</Text>
+            <Text style={[styles.tagline, taglineStyle]}>
               Controle financeiro pessoal
-          </Text>
+            </Text>
         </View>
 
       {/* Card de Registro */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Preencha seus dados</Text>
+        <Text style={[styles.cardTitle, cardTitleStyle]}>Preencha seus dados</Text>
 
         <View style={styles.inputContainer}>
           <MaterialCommunityIcons name="email-outline" size={20} color="#6B6B6B" style={styles.inputIcon} />
