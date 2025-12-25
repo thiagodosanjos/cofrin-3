@@ -361,10 +361,15 @@ export default function CreditCardBillDetails() {
                   <MaterialCommunityIcons name="check-circle" size={14} color={colors.success} />
                   <Text style={[styles.statusText, { color: colors.success }]}>Paga</Text>
                 </View>
-              ) : (
+              ) : summary.total > 0 ? (
                 <View style={[styles.statusBadge, { backgroundColor: colors.warningBg }]}>
                   <MaterialCommunityIcons name="clock-outline" size={14} color={colors.warning} />
                   <Text style={[styles.statusText, { color: colors.warning }]}>Pagamento Pendente</Text>
+                </View>
+              ) : (
+                <View style={[styles.statusBadge, { backgroundColor: colors.successBg }]}>
+                  <MaterialCommunityIcons name="check-circle-outline" size={14} color={colors.success} />
+                  <Text style={[styles.statusText, { color: colors.success }]}>Sem lançamentos</Text>
                 </View>
               )}
             </View>
